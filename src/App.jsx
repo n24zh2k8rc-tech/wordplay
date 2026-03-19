@@ -972,6 +972,11 @@ export default function App() {
   const perfectDays = currentUser ? (currentUser.awardedAchievements || []).filter((key) => key.startsWith("perfect-all-3-")).length : 0;
   const usingDemoLeaderboardFill = rankedAccountsReal.length < MIN_LEADERBOARD_USERS;
 
+  const progressRingRadius = 14;
+  const progressRingCirc = 2 * Math.PI * progressRingRadius;
+  const progressRingFraction = completedCount === 0 ? 0.14 : completedCount / 3;
+  const progressRingDash = progressRingCirc * progressRingFraction;
+
   return (
     <div className="wordplay-app">
       <nav>
@@ -979,19 +984,68 @@ export default function App() {
           <img src={logoImage} alt="English Everyday Play logo" className="nav-logo-icon" />
           <span className="logo-desktop">English Everyday</span>
         </a>
-        <div className="nav-progress">
-          <div className="progress-track" aria-label="Daily game completion progress">
-            <div
-              className={`progress-fill progress-${completedCount}`}
-              style={{ width: `${(completedCount / 3) * 100}%` }}
-            />
-            {completedCount === 3 && <span className="progress-check">✓</span>}
-          </div>
+        <div className="nav-actions">
           {currentUser && (
+            <div
+              className="progress-ring-wrap"
+              role="img"
+              aria-label={`Daily progress: ${completedCount} of 3 games completed`}
+            >
+              <svg
+                className="progress-ring"
+                viewBox="0 0 36 36"
+                width="36"
+                height="36"
+                aria-hidden="true"
+              >
+                <circle
+                  className="progress-ring-track"
+                  cx="18"
+                  cy="18"
+                  r={progressRingRadius}
+                  fill="none"
+                />
+                <circle
+                  className={`progress-ring-fill progress-${completedCount}`}
+                  cx="18"
+                  cy="18"
+                  r={progressRingRadius}
+                  fill="none"
+                  strokeLinecap="round"
+                  transform="rotate(-90 18 18)"
+                  strokeDasharray={`${progressRingDash} ${progressRingCirc}`}
+                />
+              </svg>
+              {completedCount === 3 && (
+                <span className="progress-check" aria-hidden="true">
+                  ✓
+                </span>
+              )}
+            </div>
+          )}
+          {currentUser ? (
             <div className="points-menu-wrap">
-              <button className="points-pill profile-trigger" onClick={() => setProfileMenuOpen((prev) => !prev)} type="button">
+              <button
+                className="points-pill profile-trigger"
+                onClick={() => setProfileMenuOpen((prev) => !prev)}
+                type="button"
+                aria-expanded={profileMenuOpen}
+                aria-haspopup="true"
+                aria-label="Account menu"
+              >
                 <span>⭐ {currentUser.points || 0} pts</span>
-                <span className="pill-icons">☰</span>
+                <span className="profile-user-icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.75" />
+                    <circle cx="12" cy="9" r="3" stroke="currentColor" strokeWidth="1.75" />
+                    <path
+                      d="M5.5 19.5c.9-3.2 3.4-5 6.5-5s5.6 1.8 6.5 5"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
               </button>
               {profileMenuOpen && (
                 <div className="profile-menu">
@@ -1017,6 +1071,17 @@ export default function App() {
                 </div>
               )}
             </div>
+          ) : (
+            <button
+              className="btn-primary nav-signup-btn"
+              onClick={() => {
+                setAuthMode("signup");
+                setAuthOpen(true);
+              }}
+              type="button"
+            >
+              Sign Up
+            </button>
           )}
         </div>
       </nav>
@@ -1432,8 +1497,25 @@ export default function App() {
               Email
             </label>
             <input id="archive-email" className="auth-input" type="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} />
-            <label className="auth-label" htmlFor="archive-password">
+            <label className="auth-label auth-label-inline" htmlFor="archive-password">
               Password
+              {authMode === "signup" && (
+                <span className="password-info-wrap">
+                  <button type="button" className="password-info-icon" aria-describedby="password-rules-tooltip" aria-label="Password requirements">
+                    i
+                  </button>
+                  <div id="password-rules-tooltip" className="password-info-tooltip" role="tooltip">
+                    <div className="password-info-tooltip-title">Strong password</div>
+                    <ul className="password-rules">
+                      <li className={passwordChecks.minLength ? "rule-pass" : ""}>At least 8 characters</li>
+                      <li className={passwordChecks.uppercase ? "rule-pass" : ""}>At least 1 uppercase letter (A-Z)</li>
+                      <li className={passwordChecks.lowercase ? "rule-pass" : ""}>At least 1 lowercase letter (a-z)</li>
+                      <li className={passwordChecks.number ? "rule-pass" : ""}>At least 1 number (0-9)</li>
+                      <li className={passwordChecks.special ? "rule-pass" : ""}>At least 1 special character (e.g. !@#$)</li>
+                    </ul>
+                  </div>
+                </span>
+              )}
             </label>
             <input id="archive-password" className="auth-input" type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} />
             {authMode === "signup" && (
@@ -1459,16 +1541,6 @@ export default function App() {
                   value={authConfirmPassword}
                   onChange={(e) => setAuthConfirmPassword(e.target.value)}
                 />
-                <div className="auth-hint">
-                  Use a strong password with all of these:
-                  <ul className="password-rules">
-                    <li className={passwordChecks.minLength ? "rule-pass" : ""}>At least 8 characters</li>
-                    <li className={passwordChecks.uppercase ? "rule-pass" : ""}>At least 1 uppercase letter (A-Z)</li>
-                    <li className={passwordChecks.lowercase ? "rule-pass" : ""}>At least 1 lowercase letter (a-z)</li>
-                    <li className={passwordChecks.number ? "rule-pass" : ""}>At least 1 number (0-9)</li>
-                    <li className={passwordChecks.special ? "rule-pass" : ""}>At least 1 special character (e.g. !@#$)</li>
-                  </ul>
-                </div>
               </>
             )}
             {authError && <div className="auth-error">{authError}</div>}
