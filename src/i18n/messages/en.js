@@ -144,6 +144,8 @@ export const en = {
   },
   modal: {
     game: "Game",
+    ready: "Ready?",
+    go: "Go!",
     question: "Question",
     of: "of",
     score: "Score:",

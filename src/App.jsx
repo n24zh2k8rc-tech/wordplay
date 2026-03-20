@@ -307,6 +307,7 @@ export default function App() {
   const [modalOpen, setModalOpen] = useState(false);
   const [currentGame, setCurrentGame] = useState(-1);
   const [resultState, setResultState] = useState(null);
+  const [preGameCountdown, setPreGameCountdown] = useState(0);
 
   const [wm, setWm] = useState(null);
   const [sb, setSb] = useState(null);
@@ -458,6 +459,14 @@ export default function App() {
     }, 5000);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (!modalOpen || resultState || currentGame < 0 || preGameCountdown <= 0) return undefined;
+    const id = window.setTimeout(() => {
+      setPreGameCountdown((n) => Math.max(0, n - 1));
+    }, 1000);
+    return () => window.clearTimeout(id);
+  }, [modalOpen, resultState, currentGame, preGameCountdown]);
 
   useEffect(() => {
     const panelOpen = cookieConsent === null || cookiePanelOpen;
@@ -784,6 +793,7 @@ export default function App() {
     setCurrentGame(id);
     setModalOpen(true);
     setResultState(null);
+    setPreGameCountdown(4);
 
     if (id === 0) {
       if (activeSessions[0]) {
@@ -845,12 +855,14 @@ export default function App() {
     setModalOpen(false);
     setCurrentGame(-1);
     setResultState(null);
+    setPreGameCountdown(0);
   };
 
   const backToHomepage = () => {
     setModalOpen(false);
     setCurrentGame(-1);
     setResultState(null);
+    setPreGameCountdown(0);
   };
 
   const showResult = (gameId, score, total, reviewDetails = []) => {
@@ -870,6 +882,7 @@ export default function App() {
     setActiveSessions((prev) => ({ ...prev, [gameId]: null }));
     awardPointsForCompletion(gameId);
     setModalOpen(false);
+    setPreGameCountdown(0);
     const wrongAnswers = reviewDetails.filter((item) => !item.isCorrect);
     setResultState({ gameId, score, total, ...summary, isReview: false, wrongAnswers, allAnswers: reviewDetails });
   };
@@ -1733,8 +1746,8 @@ export default function App() {
             <div>
               <h3>{currentGame >= 0 ? gameCards[currentGame].modalTitle : tEn("modal.game")}</h3>
               <div className="progress-dots">
-                {!resultState && currentGame === 0 && wm && renderDots(wm.questions.length, wm.current, wm.results)}
-                {!resultState && currentGame === 1 && sb && renderDots(sb.questions.length, sb.current, sb.results)}
+                {!resultState && preGameCountdown === 0 && currentGame === 0 && wm && renderDots(wm.questions.length, wm.current, wm.results)}
+                {!resultState && preGameCountdown === 0 && currentGame === 1 && sb && renderDots(sb.questions.length, sb.current, sb.results)}
               </div>
             </div>
             <button className="modal-close" onClick={closeModal} type="button">
@@ -1742,14 +1755,20 @@ export default function App() {
             </button>
           </div>
           <div className="modal-body">
+            {preGameCountdown > 0 ? (
+              <div className="pre-game-countdown-wrap" role="status" aria-live="polite">
+                <div className="pre-game-countdown-ready">{t("modal.ready")}</div>
+                <div className="pre-game-countdown-number">
+                  {preGameCountdown === 1 ? t("modal.go") : preGameCountdown - 1}
+                </div>
+              </div>
+            ) : (
+              <>
             {currentGame === 0 && wm && wmQuestion && (
               <>
                 <div className="score-bar">
                   <span>
                     {tEn("modal.question")} {wm.current + 1} {tEn("modal.of")} {wm.questions.length}
-                  </span>
-                  <span className="score-pill">
-                    {tEn("modal.score")} {wm.score}/{wm.questions.length}
                   </span>
                 </div>
                 <div className="word-display">
@@ -1781,9 +1800,6 @@ export default function App() {
                 <div className="score-bar">
                   <span>
                     {tEn("modal.question")} {sb.current + 1} {tEn("modal.of")} {sb.questions.length}
-                  </span>
-                  <span className="score-pill">
-                    {tEn("modal.score")} {sb.score}/{sb.questions.length}
                   </span>
                 </div>
                 <div className="sentence-prompt">📝 {sbQuestion.prompt}</div>
@@ -1846,6 +1862,8 @@ export default function App() {
                 <button className={`next-btn ${fs.submitted ? "show" : ""}`} onClick={onFsResult} type="button">
                   {t("modal.seeResults")}
                 </button>
+              </>
+            )}
               </>
             )}
           </div>
