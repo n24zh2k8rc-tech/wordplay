@@ -148,7 +148,7 @@ export const en = {
     seeResults: "See Results →",
   },
   auth: {
-    createTitle: "Create Account to Access Archive",
+    createTitle: "Create Account",
     signInTitle: "Sign In to Access Archive",
     email: "Email",
     password: "Password",
