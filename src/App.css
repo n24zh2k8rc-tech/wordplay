@@ -7,6 +7,8 @@
 }
 
 :root {
+  /* Full-screen overlays (.result-page) start below sticky nav so map/stats never cover it */
+  --result-page-top-offset: calc(60px + env(safe-area-inset-top, 0px));
   --cream: #faf7f0;
   --ink: #1a1714;
   --ink2: #4a4540;
@@ -48,7 +50,7 @@ body {
 nav {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 110;
   background: var(--cream);
   border-bottom: 1px solid var(--border);
   padding: 0 max(2rem, env(safe-area-inset-right, 0px)) 0 max(2rem, env(safe-area-inset-left, 0px));
@@ -86,6 +88,14 @@ nav {
   width: 32px;
   height: 32px;
   object-fit: contain;
+}
+
+.nav-leading {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .nav-actions {
@@ -359,6 +369,32 @@ header .eyebrow {
   margin-bottom: 1rem;
 }
 
+header .eyebrow-prefix {
+  white-space: pre;
+}
+
+header .eyebrow-everyday-word {
+  display: inline-block;
+  animation: eyebrow-everyday-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  header .eyebrow-everyday-word {
+    animation: none;
+  }
+}
+
+@keyframes eyebrow-everyday-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5em);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 header h1 {
   font-family: "DM Sans", sans-serif;
   font-size: clamp(2.4rem, 6vw, 3.8rem);
@@ -431,6 +467,8 @@ header p {
 /* Schools & teachers lead capture (below archive / invite row) */
 .schools-section {
   margin: 0 auto 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
 }
 
 .schools-inner {
@@ -1026,9 +1064,12 @@ header p {
 
 .result-page {
   position: fixed;
-  inset: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: var(--result-page-top-offset);
   background: var(--cream);
-  z-index: 220;
+  z-index: 100;
   overflow-y: auto;
 }
 
@@ -1055,6 +1096,65 @@ header p {
 
 .stats-page-content {
   text-align: left;
+}
+
+.stats-page-heading-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.stats-back-arrow {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  margin-left: -8px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1;
+  color: #2563eb;
+  cursor: pointer;
+}
+
+.stats-back-arrow:hover {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+
+.stats-back-arrow:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.stats-page-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-family: "DM Sans", sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.stats-title-emoji {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.stats-page-content > p {
+  margin-top: 0;
 }
 
 .legal-article {
@@ -1317,6 +1417,10 @@ header p {
   margin-bottom: 0.5rem;
 }
 
+.stats-page-content .stats-subheading {
+  margin-top: 1.1rem;
+}
+
 .stats-toggle-row {
   display: flex;
   gap: 8px;
@@ -1336,11 +1440,126 @@ header p {
   margin-bottom: 0.55rem;
 }
 
+.stats-map-intro {
+  margin: 0 0 0.5rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink2);
+}
+
+.stats-map-demo-note {
+  margin-bottom: 0.75rem;
+}
+
+.world-activity-map-wrap {
+  position: relative;
+  margin: 0 0 1.5rem;
+  padding: 0.75rem 0.65rem 0.5rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.world-activity-map-caption {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink3);
+  margin-bottom: 0.35rem;
+}
+
+.world-activity-map-you {
+  font-size: 0.78rem;
+  color: var(--ink2);
+  margin-bottom: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--mint-light);
+  border-radius: 8px;
+  border: 1px solid rgba(36, 138, 103, 0.2);
+}
+
+.world-activity-map-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(52vh, 420px);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #e8f4fc 0%, #f6fbfe 100%);
+}
+
+.world-activity-country {
+  cursor: default;
+  transition: opacity 0.15s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .world-activity-country:hover {
+    opacity: 0.88;
+  }
+}
+
+.world-activity-map-tooltip {
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--ink);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  align-items: baseline;
+}
+
+.world-activity-map-tooltip strong {
+  font-weight: 600;
+}
+
+.world-activity-map-tooltip-metric {
+  color: var(--ink2);
+  font-size: 0.8rem;
+}
+
+.world-activity-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin-top: 0.65rem;
+  font-size: 0.72rem;
+  color: var(--ink3);
+}
+
+.world-activity-legend-swatch {
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.world-activity-legend-low {
+  background: rgb(232, 244, 252);
+}
+
+.world-activity-legend-high {
+  background: rgb(11, 95, 165);
+}
+
+.world-activity-legend-gradient {
+  flex: 1 1 72px;
+  min-width: 48px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: linear-gradient(90deg, rgb(232, 244, 252), rgb(11, 95, 165));
+}
+
+.stats-leaderboard-heading {
+  margin-top: 0.25rem;
+}
+
 .leaderboard-list {
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
+  margin-bottom: 1.1rem;
 }
 
 .leaderboard-empty {
@@ -1997,6 +2216,7 @@ footer {
 
   .schools-section {
     margin-bottom: 2.5rem;
+    padding-top: 1.75rem;
   }
 
   .schools-inner {
@@ -2041,6 +2261,10 @@ footer {
 }
 
 @media (max-width: 640px) {
+  :root {
+    --result-page-top-offset: calc(52px + env(safe-area-inset-top, 0px));
+  }
+
   .logo-desktop {
     display: none;
   }
@@ -2170,6 +2394,7 @@ footer {
 
   .schools-section {
     margin-bottom: 1.75rem;
+    padding-top: 1.5rem;
   }
 
   .schools-inner {

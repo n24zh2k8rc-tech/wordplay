@@ -98,6 +98,11 @@ export function PrivacyPolicyPage({ onClose }) {
               Your consent choices are stored locally (e.g. under the key <code>wordplay-cookie-consent</code>) so we can respect them
               on return visits.
             </p>
+            <p>
+              If your browser receives an approximate country from our optional ipapi.co lookup (see below), we may store the ISO country
+              code locally under <code>wordplay-estimated-country</code> so the in-app statistics view can highlight your region on an
+              illustrative world map. This remains on your device in the default setup.
+            </p>
           </section>
 
           <section className="legal-section">
@@ -116,13 +121,13 @@ export function PrivacyPolicyPage({ onClose }) {
                 data under their policies.
               </li>
               <li>
-                <strong>ipapi.co</strong> — on your first visit, if you have not already chosen a display language, we may request your
-                approximate country (from your IP) only to suggest a default UI language (e.g. Spanish, French, or Thai). That request is sent
-                directly from your browser to ipapi.co; see{" "}
+                <strong>ipapi.co</strong> — we may request your approximate country (from your IP) to suggest a default UI language when
+                you have not already chosen one, and/or to store an approximate country code for the statistics map highlight. The request is
+                sent directly from your browser to ipapi.co; see{" "}
                 <a href="https://ipapi.co/privacy" target="_blank" rel="noopener noreferrer">
                   their privacy policy
                 </a>
-                . Your choice is then stored locally so we do not need to repeat this.
+                . Language and country estimates are stored locally where applicable so we do not need to repeat the request unnecessarily.
               </li>
             </ul>
             <p>We do not control third-party sites. Please read their policies before using them.</p>

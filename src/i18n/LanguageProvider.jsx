@@ -4,6 +4,7 @@ import { I18nContext } from "./I18nContext.js";
 import { getMergedMessages, UI_LANGUAGE_CODES } from "./messages/index.js";
 
 const STORAGE_KEY = "wordplay-ui-language";
+const ESTIMATED_COUNTRY_KEY = "wordplay-estimated-country";
 const IPAPI_URL = "https://ipapi.co/json/";
 
 function readStoredLanguage() {
@@ -39,7 +40,14 @@ export function LanguageProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (readStoredLanguage() !== null) return;
+    const needLanguageSuggestion = readStoredLanguage() === null;
+    let haveCountry = false;
+    try {
+      haveCountry = Boolean(localStorage.getItem(ESTIMATED_COUNTRY_KEY));
+    } catch {
+      haveCountry = false;
+    }
+    if (!needLanguageSuggestion && haveCountry) return;
 
     const ac = new AbortController();
 
@@ -52,12 +60,24 @@ export function LanguageProvider({ children }) {
         if (!res.ok) return;
         const data = await res.json();
         if (ac.signal.aborted) return;
-        const next = languageFromCountryCode(data.country_code);
-        setLanguageState(next);
-        try {
-          localStorage.setItem(STORAGE_KEY, next);
-        } catch {
-          /* ignore */
+
+        const cc = data.country_code;
+        if (cc && typeof cc === "string") {
+          try {
+            localStorage.setItem(ESTIMATED_COUNTRY_KEY, cc.trim().toUpperCase());
+          } catch {
+            /* ignore */
+          }
+        }
+
+        if (needLanguageSuggestion) {
+          const next = languageFromCountryCode(cc);
+          setLanguageState(next);
+          try {
+            localStorage.setItem(STORAGE_KEY, next);
+          } catch {
+            /* ignore */
+          }
         }
       } catch (e) {
         if (e.name === "AbortError") return;

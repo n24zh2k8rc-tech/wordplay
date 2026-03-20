@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import logoImage from "./assets/logo.png";
 import { PrivacyPolicyPage } from "./PrivacyPolicyPage.jsx";
@@ -8,6 +8,9 @@ import { getMergedMessages } from "./i18n/messages/index.js";
 import { useI18n } from "./i18n/useI18n.js";
 import { DATE_LOCALE_BY_UI } from "./i18n/languageOptions.jsx";
 import { LanguageSelect } from "./i18n/LanguageSelect.jsx";
+import { demoHash32 } from "./utils/demoHash32.js";
+import { WorldActivityMap } from "./stats/WorldActivityMap.jsx";
+import { EYEBROW_EVERYDAY_VARIANTS } from "./branding/everydayEyebrowVariants.js";
 
 function getTodayKey() {
   const d = new Date();
@@ -52,6 +55,17 @@ const SESSION_KEY = "wordplay-current-user";
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 const COOKIE_CONSENT_KEY = "wordplay-cookie-consent";
 const COOKIE_CONSENT_VERSION = 1;
+/** Approximate country (ISO alpha-2) from ipapi — for stats map highlight only. */
+const ESTIMATED_COUNTRY_KEY = "wordplay-estimated-country";
+
+function readEstimatedCountryCode() {
+  try {
+    const raw = localStorage.getItem(ESTIMATED_COUNTRY_KEY);
+    return raw && typeof raw === "string" ? raw.trim().toUpperCase() : "";
+  } catch {
+    return "";
+  }
+}
 
 function parseCookieConsent() {
   try {
@@ -184,14 +198,6 @@ const DEMO_PROFILES = [
   { first: "Charlie", last: "Tan" },
   { first: "Parker", last: "Diaz" },
 ];
-
-function demoHash32(n) {
-  let x = n >>> 0;
-  x ^= x << 13;
-  x ^= x >>> 17;
-  x ^= x << 5;
-  return x >>> 0;
-}
 
 function buildDemoLeaderboardEntries(count, seedOffset, studentCodeForClassroom) {
   const entries = [];
@@ -327,6 +333,8 @@ export default function App() {
   const [authStudentCode, setAuthStudentCode] = useState("");
   const [authError, setAuthError] = useState("");
   const [archiveOpen, setArchiveOpen] = useState(false);
+  /** True when auth modal was opened from View Archive (not header Sign in / Sign up). */
+  const pendingArchiveAfterAuthRef = useRef(false);
   const [archiveData, setArchiveData] = useState({});
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -337,12 +345,14 @@ export default function App() {
   const [draftAnalytics, setDraftAnalytics] = useState(false);
   const [draftMarketing, setDraftMarketing] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [estimatedCountryCode, setEstimatedCountryCode] = useState(() => readEstimatedCountryCode());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.location.hash === "#privacy";
   });
   const [statsScope, setStatsScope] = useState("all");
+  const [eyebrowEverydayIdx, setEyebrowEverydayIdx] = useState(0);
   const [settingsStudentCode, setSettingsStudentCode] = useState("");
   const [schoolLeadEmail, setSchoolLeadEmail] = useState("");
   const [schoolLeadSchool, setSchoolLeadSchool] = useState("");
@@ -423,6 +433,15 @@ export default function App() {
   }, [toastMessage]);
 
   useEffect(() => {
+    const n = EYEBROW_EVERYDAY_VARIANTS.length;
+    if (n <= 1) return undefined;
+    const id = window.setInterval(() => {
+      setEyebrowEverydayIdx((i) => (i + 1) % n);
+    }, 3000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
     const panelOpen = cookieConsent === null || cookiePanelOpen;
     if (!panelOpen) return;
     if (cookieConsent) {
@@ -447,6 +466,7 @@ export default function App() {
 
   const openArchive = () => {
     if (!currentUser) {
+      pendingArchiveAfterAuthRef.current = true;
       setAuthMode(accounts.length > 0 ? "signin" : "signup");
       setAuthOpen(true);
       return;
@@ -482,8 +502,40 @@ export default function App() {
   };
 
   const closeAuth = () => {
+    pendingArchiveAfterAuthRef.current = false;
     setAuthOpen(false);
     resetAuthForm();
+  };
+
+  const goToHomepage = () => {
+    closeAuth();
+    setProfileMenuOpen(false);
+    setStatsOpen(false);
+    setArchiveOpen(false);
+    setSettingsOpen(false);
+    setModalOpen(false);
+    setResultState(null);
+    setInviteOpen(false);
+    setPrivacyPolicyOpen(false);
+    if (typeof window !== "undefined") {
+      if (window.location.hash === "#privacy") {
+        window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  /** After successful sign-in/up: open archive only if user started from an archive entry point. */
+  const completeAuthSuccess = () => {
+    setAuthOpen(false);
+    resetAuthForm();
+    if (!pendingArchiveAfterAuthRef.current) return;
+    pendingArchiveAfterAuthRef.current = false;
+    if (previousArchiveKeys.length === 0) {
+      setToastMessage(t("toasts.noArchive"));
+    } else {
+      setArchiveOpen(true);
+    }
   };
 
   const handleSignup = () => {
@@ -521,9 +573,7 @@ export default function App() {
     };
     setAccounts((prev) => [...prev, nextAccount]);
     setCurrentUserEmail(email);
-    setAuthOpen(false);
-    setArchiveOpen(true);
-    resetAuthForm();
+    completeAuthSuccess();
   };
 
   const handleSignin = () => {
@@ -539,9 +589,7 @@ export default function App() {
     const matched = accounts.find((acct) => acct.email === email && acct.password === authPassword);
     if (matched) {
       setCurrentUserEmail(matched.email);
-      setAuthOpen(false);
-      setArchiveOpen(true);
-      resetAuthForm();
+      completeAuthSuccess();
       return;
     }
     setAuthError(tEn("errors.invalidCredentials"));
@@ -560,6 +608,7 @@ export default function App() {
   const openStats = () => {
     setProfileMenuOpen(false);
     setStatsScope("all");
+    setEstimatedCountryCode(readEstimatedCountryCode());
     setStatsOpen(true);
   };
 
@@ -1050,10 +1099,12 @@ export default function App() {
   return (
     <div className={`wordplay-app${showCookiePanel ? " has-cookie-banner" : ""}`}>
       <nav>
-        <a className="nav-logo" href="#">
-          <img src={logoImage} alt={t("logoAlt")} className="nav-logo-icon" />
-          <span className="logo-desktop">English Everyday</span>
-        </a>
+        <div className="nav-leading">
+          <a className="nav-logo" href="#" onClick={(e) => { e.preventDefault(); goToHomepage(); }}>
+            <img src={logoImage} alt={t("logoAlt")} className="nav-logo-icon" />
+            <span className="logo-desktop">English Everyday</span>
+          </a>
+        </div>
         <div className="nav-actions">
           <div className="nav-language-slot">
             <LanguageSelect
@@ -1130,6 +1181,16 @@ export default function App() {
               </button>
               {profileMenuOpen && (
                 <div className="profile-menu">
+                  <button
+                    className="profile-menu-item"
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      goToHomepage();
+                    }}
+                    type="button"
+                  >
+                    {t("nav.homepage")}
+                  </button>
                   <button className="profile-menu-item" onClick={openStats} type="button">
                     {t("nav.myStats")}
                   </button>
@@ -1157,6 +1218,7 @@ export default function App() {
               <button
                 className="btn-secondary nav-signin-btn"
                 onClick={() => {
+                  pendingArchiveAfterAuthRef.current = false;
                   setAuthMode("signin");
                   setAuthOpen(true);
                 }}
@@ -1167,6 +1229,7 @@ export default function App() {
               <button
                 className="btn-primary nav-signup-btn"
                 onClick={() => {
+                  pendingArchiveAfterAuthRef.current = false;
                   setAuthMode("signup");
                   setAuthOpen(true);
                 }}
@@ -1180,7 +1243,16 @@ export default function App() {
       </nav>
 
       <header>
-        <div className="eyebrow">{t("header.eyebrow")}</div>
+        <div className="eyebrow" aria-live="off">
+          <span className="eyebrow-prefix">{t("header.eyebrowPrefix")}</span>
+          <span
+            key={eyebrowEverydayIdx}
+            className="eyebrow-everyday-word"
+            lang={EYEBROW_EVERYDAY_VARIANTS[eyebrowEverydayIdx].lang}
+          >
+            {EYEBROW_EVERYDAY_VARIANTS[eyebrowEverydayIdx].text}
+          </span>
+        </div>
         <h1>{t("header.title")}</h1>
         <p>{t("header.subtitle")}</p>
         <p className="header-date">
@@ -1336,15 +1408,24 @@ export default function App() {
 
       {settingsOpen && currentUser && (
         <div className="result-page">
-          <div className="result-page-header">
-            <button className="btn-secondary" onClick={() => setSettingsOpen(false)} type="button">
-              {t("settings.backHome")}
-            </button>
-          </div>
           <div className="result-page-content">
             <div className="result-screen show stats-page-content">
-              <div className="result-icon">⚙️</div>
-              <h3>{t("settings.title")}</h3>
+              <div className="stats-page-heading-block">
+                <button
+                  type="button"
+                  className="stats-back-arrow"
+                  onClick={() => setSettingsOpen(false)}
+                  aria-label={t("settings.backHome")}
+                >
+                  ←
+                </button>
+                <h3 className="stats-page-title">
+                  <span className="stats-title-emoji" aria-hidden="true">
+                    ⚙️
+                  </span>
+                  {t("settings.title")}
+                </h3>
+              </div>
               <p>{t("settings.subtitle")}</p>
               <div className="settings-panel">
                 <label className="auth-label" id="settings-language-label" htmlFor="settings-language-select">
@@ -1385,15 +1466,24 @@ export default function App() {
 
       {statsOpen && currentUser && (
         <div className="result-page">
-          <div className="result-page-header">
-            <button className="btn-secondary" onClick={() => setStatsOpen(false)} type="button">
-              {t("stats.backHome")}
-            </button>
-          </div>
           <div className="result-page-content">
             <div className="result-screen show stats-page-content">
-              <div className="result-icon">📊</div>
-              <h3>{t("stats.title")}</h3>
+              <div className="stats-page-heading-block">
+                <button
+                  type="button"
+                  className="stats-back-arrow"
+                  onClick={goToHomepage}
+                  aria-label={t("stats.backToHomeAria")}
+                >
+                  ←
+                </button>
+                <h3 className="stats-page-title">
+                  <span className="stats-title-emoji" aria-hidden="true">
+                    📊
+                  </span>
+                  {t("stats.title")}
+                </h3>
+              </div>
               <p>{t("stats.subtitle")}</p>
               <div className="stats-grid">
                 <div className="stats-card">
@@ -1417,7 +1507,7 @@ export default function App() {
                   <div className="stats-value">🏆 {perfectDays}</div>
                 </div>
               </div>
-              <div className="stats-subheading">{t("stats.leaderboardHeading")}</div>
+              <div className="stats-subheading stats-leaderboard-heading">{t("stats.leaderboardHeading")}</div>
               {usingDemoLeaderboardFill && (
                 <div className="stats-note">{t("stats.demoNote", { min: MIN_LEADERBOARD_USERS })}</div>
               )}
@@ -1462,6 +1552,17 @@ export default function App() {
                   ))
                 )}
               </div>
+              <div className="stats-subheading">{t("stats.worldMapHeading")}</div>
+              <p className="stats-map-intro">{t("stats.worldMapSubtitle")}</p>
+              <div className="stats-note stats-map-demo-note">{t("stats.worldMapDemoNote")}</div>
+              <WorldActivityMap
+                userCountryAlpha2={estimatedCountryCode}
+                mapCaption={t("stats.worldMapCaption")}
+                tooltipTotalLabel={t("stats.worldMapTooltipTotal")}
+                legendLow={t("stats.worldMapLegendLow")}
+                legendHigh={t("stats.worldMapLegendHigh")}
+                youLabel={t("stats.worldMapYouHere")}
+              />
             </div>
           </div>
         </div>
