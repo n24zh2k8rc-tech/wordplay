@@ -129,6 +129,9 @@ export const en = {
       "Detailed question review is available for games completed after this update. Complete a new game to see detailed mistakes and answers here.",
     viewArchive: "View Archive",
     backHomeBtn: "Back to Homepage",
+    signUpCtaTitle: "Save your points and view archived games",
+    signUpCtaBody: "Create an account to keep your progress and access your archive across visits.",
+    signUpCtaButton: "Sign Up",
     blank: "(blank)",
   },
   resultSummary: {

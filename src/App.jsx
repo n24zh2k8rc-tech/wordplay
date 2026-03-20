@@ -1650,6 +1650,26 @@ export default function App() {
               </div>
               <h3>{resultState.title}</h3>
               <p>{resultState.msg}</p>
+                {!currentUser && (
+                  <div className="result-signup-cta" role="region" aria-label={t("result.signUpCtaTitle")}>
+                    <div className="result-signup-cta-title">{t("result.signUpCtaTitle")}</div>
+                    <p className="result-signup-cta-body">{t("result.signUpCtaBody")}</p>
+                    <div className="result-signup-cta-actions">
+                      <button
+                        className="btn-primary"
+                        type="button"
+                        onClick={() => {
+                          pendingArchiveAfterAuthRef.current = true;
+                          setAuthMode("signup");
+                          resetAuthForm();
+                          setAuthOpen(true);
+                        }}
+                      >
+                        {t("result.signUpCtaButton")}
+                      </button>
+                    </div>
+                  </div>
+                )}
               {resultState.gameId === 2 && resultState.allAnswers && resultState.allAnswers.length > 0 && (
                 <div className="review-wrong-list">
                   <h4>{tEn("result.storyReview")}</h4>

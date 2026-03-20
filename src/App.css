@@ -1336,7 +1336,6 @@ header p {
   display: block;
   width: 100%;
   height: auto;
-  vertical-align: top;
 }
 
 .language-select-label {
@@ -1690,6 +1689,36 @@ header p {
   gap: 10px;
   justify-content: center;
   flex-wrap: wrap;
+}
+
+.result-signup-cta {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto 1rem;
+  padding: 0.9rem 1rem;
+  background: var(--mint-light);
+  border: 1px solid rgba(45, 158, 117, 0.35);
+  border-radius: 12px;
+  text-align: left;
+}
+
+.result-signup-cta-title {
+  font-size: 1rem;
+  font-weight: 800;
+  margin: 0 0 0.35rem;
+  color: var(--ink);
+}
+
+.result-signup-cta-body {
+  margin: 0 0 0.8rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink2);
+}
+
+.result-signup-cta-actions {
+  display: flex;
+  justify-content: center;
 }
 
 .review-wrong-list {
