@@ -437,7 +437,7 @@ export default function App() {
     if (n <= 1) return undefined;
     const id = window.setInterval(() => {
       setEyebrowEverydayIdx((i) => (i + 1) % n);
-    }, 3000);
+    }, 5000);
     return () => window.clearInterval(id);
   }, []);
 
@@ -1156,17 +1156,17 @@ export default function App() {
           {currentUser ? (
             <div className="points-menu-wrap">
               <button
-                className="points-pill profile-trigger"
+                className="nav-account-trigger"
                 onClick={() => setProfileMenuOpen((prev) => !prev)}
                 type="button"
                 aria-expanded={profileMenuOpen}
                 aria-haspopup="true"
                 aria-label={t("nav.accountMenu")}
               >
-                <span>
+                <span className="nav-account-points">
                   ⭐ {currentUser.points || 0} {t("nav.pts")}
                 </span>
-                <span className="profile-user-icon" aria-hidden="true">
+                <span className="nav-account-user-icon" aria-hidden="true">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
                     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.75" />
                     <circle cx="12" cy="9" r="3" stroke="currentColor" strokeWidth="1.75" />
@@ -1177,6 +1177,9 @@ export default function App() {
                       strokeLinecap="round"
                     />
                   </svg>
+                </span>
+                <span className="language-select-chevron" aria-hidden="true">
+                  ▾
                 </span>
               </button>
               {profileMenuOpen && (
@@ -1269,7 +1272,17 @@ export default function App() {
             role="button"
             tabIndex={0}
           >
-            <div className={`completed-mark ${progress.completed[game.id] ? "show" : ""}`}>✓</div>
+            <div className={`completed-mark ${progress.completed[game.id] ? "show" : ""}`}>
+              <span className="completed-mark-check" aria-hidden="true">
+                ✓
+              </span>
+              {currentUser &&
+                (currentUser.awardedCompletions || []).includes(`${todayKey}-${game.id}`) && (
+                  <span className="completed-mark-points">
+                    +{GAME_POINTS[game.id]} {t("nav.pts")}
+                  </span>
+                )}
+            </div>
             <div className="level-tag">{game.tag}</div>
             <h2>{game.title}</h2>
             <p>{game.desc}</p>
@@ -1812,6 +1825,17 @@ export default function App() {
             </div>
             {authMode === "signup" && (
               <>
+                <label className="auth-label" htmlFor="archive-confirm-password">
+                  {tEn("auth.confirmPassword")}
+                </label>
+                <input
+                  id="archive-confirm-password"
+                  className="auth-input"
+                  type="password"
+                  value={authConfirmPassword}
+                  onChange={(e) => setAuthConfirmPassword(e.target.value)}
+                />
+
                 <label className="auth-label" htmlFor="student-code">
                   {tEn("auth.studentCodeOptional")}
                 </label>
@@ -1822,16 +1846,6 @@ export default function App() {
                   value={authStudentCode}
                   onChange={(e) => setAuthStudentCode(e.target.value)}
                   placeholder="e.g. CLASS-7A"
-                />
-                <label className="auth-label" htmlFor="archive-confirm-password">
-                  {tEn("auth.confirmPassword")}
-                </label>
-                <input
-                  id="archive-confirm-password"
-                  className="auth-input"
-                  type="password"
-                  value={authConfirmPassword}
-                  onChange={(e) => setAuthConfirmPassword(e.target.value)}
                 />
               </>
             )}

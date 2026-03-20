@@ -257,25 +257,40 @@ nav {
     0 2px 8px rgba(45, 158, 117, 0.45);
 }
 
-.points-pill {
+/* Account + points: match nav language dropdown pill (trigger--nav) */
+.nav-account-trigger {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 5px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  background: #fff;
+  gap: 0.35rem;
+  width: auto;
+  min-width: 0;
+  max-width: 14rem;
+  min-height: 40px;
+  padding: 6px 8px;
+  border-radius: 10px;
   border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.85);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
   color: var(--ink);
-}
-
-.profile-trigger {
-  gap: 6px;
   cursor: pointer;
+  text-align: left;
 }
 
-.profile-user-icon {
+.nav-account-trigger:hover {
+  border-color: var(--ink3);
+}
+
+.nav-account-points {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-account-user-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -285,10 +300,16 @@ nav {
   color: var(--ink2);
 }
 
-.profile-user-icon svg {
+.nav-account-user-icon svg {
   width: 100%;
   height: 100%;
   display: block;
+}
+
+.nav-account-trigger .language-select-chevron {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  color: var(--ink3);
 }
 
 .points-menu-wrap {
@@ -297,7 +318,7 @@ nav {
 
 .profile-menu {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 4px);
   right: 0;
   min-width: 130px;
   background: #fff;
@@ -375,7 +396,7 @@ header .eyebrow-prefix {
 
 header .eyebrow-everyday-word {
   display: inline-block;
-  animation: eyebrow-everyday-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: eyebrow-everyday-in 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -699,17 +720,34 @@ header p {
   right: 1rem;
   background: var(--mint);
   color: #fff;
-  border-radius: 50%;
-  width: 26px;
+  border-radius: 999px;
+  min-width: 26px;
   height: 26px;
+  padding: 0 6px;
+  gap: 4px;
   display: none;
   align-items: center;
   justify-content: center;
   font-size: 13px;
+  font-weight: 700;
+  box-sizing: border-box;
 }
 
 .completed-mark.show {
-  display: flex;
+  display: inline-flex;
+}
+
+.completed-mark-check {
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.completed-mark-points {
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .modal-overlay {
@@ -2291,10 +2329,16 @@ footer {
     font-size: 0.88rem;
   }
 
-  .profile-trigger {
+  .nav-account-trigger {
+    max-width: none;
     min-height: 44px;
-    padding: 4px 6px;
-    border-radius: 10px;
+    padding: 6px 6px;
+    gap: 0.25rem;
+  }
+
+  .nav-account-trigger .language-select-chevron {
+    font-size: 0.55rem;
+    margin-left: -0.1rem;
   }
 
   .password-info-icon {
@@ -2307,11 +2351,6 @@ footer {
     width: 24px;
     height: 24px;
     font-size: 11px;
-  }
-
-  .points-pill {
-    font-size: 11px;
-    padding: 4px 8px;
   }
 
   .progress-ring-wrap {
