@@ -1,134 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import logoImage from "./assets/logo.png";
+import { PrivacyPolicyPage } from "./PrivacyPolicyPage.jsx";
+import { getDailyData } from "./gameData/dailyContent.js";
+import { makeTranslator } from "./i18n/deepMerge.js";
+import { getMergedMessages } from "./i18n/messages/index.js";
+import { useI18n } from "./i18n/useI18n.js";
+import { DATE_LOCALE_BY_UI } from "./i18n/languageOptions.jsx";
+import { LanguageSelect } from "./i18n/LanguageSelect.jsx";
 
 function getTodayKey() {
   const d = new Date();
   return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function makePRNG(seed) {
-  let s = seed >>> 0;
-  return function next() {
-    s += 0x6d2b79f5;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function seededShuffle(arr, rng) {
-  const out = [...arr];
-  for (let i = out.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rng() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
-}
-
-const ALL_WORD_MATCH = [
-  { word: "Brave", hint: "adjective", options: ["Afraid of everything", "Ready to face danger without fear", "Very lazy and slow", "Extremely hungry"], answer: 1 },
-  { word: "Ancient", hint: "adjective", options: ["Very new and modern", "Belonging to a much earlier time", "Very small in size", "Extremely loud"], answer: 1 },
-  { word: "Generous", hint: "adjective", options: ["Selfish with money", "Always angry at others", "Willing to give freely", "Difficult to understand"], answer: 2 },
-  { word: "Exhausted", hint: "adjective", options: ["Full of energy", "Extremely tired", "Very happy", "Slightly confused"], answer: 1 },
-  { word: "Enormous", hint: "adjective", options: ["Very tiny", "Quite pretty", "Extremely large", "A little warm"], answer: 2 },
-  { word: "Grateful", hint: "adjective", options: ["Feeling thankful", "Feeling bored", "Feeling angry", "Feeling cold"], answer: 0 },
-  { word: "Peculiar", hint: "adjective", options: ["Very common", "Strange or unusual", "Perfectly normal", "Beautiful to look at"], answer: 1 },
-  { word: "Hesitate", hint: "verb", options: ["To run very fast", "To speak loudly", "To pause before acting", "To eat too much"], answer: 2 },
-  { word: "Vibrant", hint: "adjective", options: ["Dull and lifeless", "Full of energy and colour", "Very quiet", "Easily broken"], answer: 1 },
-  { word: "Cautious", hint: "adjective", options: ["Reckless and bold", "Careful to avoid danger", "Very generous", "Loud and noisy"], answer: 1 },
-  { word: "Stubborn", hint: "adjective", options: ["Very flexible", "Unwilling to change one's mind", "Extremely kind", "Slightly nervous"], answer: 1 },
-  { word: "Admire", hint: "verb", options: ["To dislike strongly", "To look at with respect and pleasure", "To forget quickly", "To argue loudly"], answer: 1 },
-  { word: "Cozy", hint: "adjective", options: ["Cold and uncomfortable", "Comfortable and warm", "Very noisy", "Difficult and stressful"], answer: 1 },
-  { word: "Thrive", hint: "verb", options: ["To struggle greatly", "To grow and do well", "To sleep deeply", "To move slowly"], answer: 1 },
-  { word: "Gloomy", hint: "adjective", options: ["Bright and cheerful", "Dark and sad", "Very exciting", "Extremely clean"], answer: 1 },
-  { word: "Eager", hint: "adjective", options: ["Bored and uninterested", "Very keen and enthusiastic", "Slow and cautious", "Quiet and shy"], answer: 1 },
-  { word: "Fragile", hint: "adjective", options: ["Very strong and tough", "Easily broken or damaged", "Extremely large", "Loud and confident"], answer: 1 },
-  { word: "Wander", hint: "verb", options: ["To stay in one place", "To walk without a fixed direction", "To sleep outdoors", "To eat quickly"], answer: 1 },
-  { word: "Sincere", hint: "adjective", options: ["Dishonest and fake", "Genuine and honest", "Very lazy", "Quite rude"], answer: 1 },
-  { word: "Scarce", hint: "adjective", options: ["Very common and plentiful", "Available in small amounts", "Extremely large", "Very loud"], answer: 1 },
-  { word: "Triumph", hint: "noun", options: ["A great failure", "A great victory or success", "A long journey", "A delicious meal"], answer: 1 },
-  { word: "Blissful", hint: "adjective", options: ["Angry and upset", "Perfectly happy and content", "Very cold", "Quite tired"], answer: 1 },
-  { word: "Discard", hint: "verb", options: ["To keep carefully", "To throw away as useless", "To repair something", "To find something lost"], answer: 1 },
-  { word: "Tranquil", hint: "adjective", options: ["Loud and chaotic", "Calm and peaceful", "Very dark", "Extremely busy"], answer: 1 },
-  { word: "Cunning", hint: "adjective", options: ["Honest and open", "Clever in a sneaky way", "Very slow", "Extremely kind"], answer: 1 },
-  { word: "Abundant", hint: "adjective", options: ["Very scarce", "Available in large quantities", "Quite boring", "Very small"], answer: 1 },
-  { word: "Cherish", hint: "verb", options: ["To ignore or neglect", "To hold dear and care for", "To break apart", "To forget forever"], answer: 1 },
-  { word: "Dreadful", hint: "adjective", options: ["Wonderful and amazing", "Very bad or unpleasant", "Quite comfortable", "Slightly cold"], answer: 1 },
-];
-
-const ALL_SENTENCE_BUILDER = [
-  { prompt: "Make a sentence about daily routine.", words: ["every", "morning", "I", "drink", "coffee", "before", "work"], answer: "I drink coffee before work every morning" },
-  { prompt: "Describe what someone is doing.", words: ["she", "is", "reading", "a", "book", "in", "the", "garden"], answer: "she is reading a book in the garden" },
-  { prompt: "Talk about the past.", words: ["yesterday", "we", "went", "to", "the", "beach", "together"], answer: "yesterday we went to the beach together" },
-  { prompt: "Make a question.", words: ["where", "did", "you", "buy", "that", "beautiful", "hat"], answer: "where did you buy that beautiful hat" },
-  { prompt: "Describe the weather.", words: ["it", "was", "raining", "heavily", "all", "day", "long"], answer: "it was raining heavily all day long" },
-  { prompt: "Express a preference.", words: ["I", "prefer", "tea", "to", "coffee", "in", "the", "winter"], answer: "I prefer tea to coffee in the winter" },
-  { prompt: "Talk about a plan.", words: ["we", "are", "going", "to", "visit", "the", "museum", "tomorrow"], answer: "we are going to visit the museum tomorrow" },
-  { prompt: "Describe a place.", words: ["the", "park", "near", "our", "house", "is", "very", "beautiful"], answer: "the park near our house is very beautiful" },
-  { prompt: "Make a polite request.", words: ["could", "you", "please", "pass", "me", "the", "salt"], answer: "could you please pass me the salt" },
-  { prompt: "Talk about an experience.", words: ["I", "have", "never", "eaten", "sushi", "before", "today"], answer: "I have never eaten sushi before today" },
-  { prompt: "Describe a feeling.", words: ["she", "felt", "very", "nervous", "before", "her", "job", "interview"], answer: "she felt very nervous before her job interview" },
-  { prompt: "Give advice.", words: ["you", "should", "drink", "more", "water", "every", "day"], answer: "you should drink more water every day" },
-  { prompt: "Describe a habit.", words: ["he", "always", "reads", "the", "news", "after", "breakfast"], answer: "he always reads the news after breakfast" },
-  { prompt: "Make a comparison.", words: ["this", "book", "is", "more", "interesting", "than", "that", "one"], answer: "this book is more interesting than that one" },
-  { prompt: "Talk about the future.", words: ["I", "will", "call", "you", "as", "soon", "as", "I", "arrive"], answer: "I will call you as soon as I arrive" },
-  { prompt: "Describe a problem.", words: ["the", "train", "was", "late", "so", "we", "missed", "the", "show"], answer: "the train was late so we missed the show" },
-  { prompt: "Express surprise.", words: ["I", "cannot", "believe", "how", "fast", "the", "time", "has", "passed"], answer: "I cannot believe how fast the time has passed" },
-  { prompt: "Describe an action in progress.", words: ["they", "are", "building", "a", "new", "school", "near", "the", "park"], answer: "they are building a new school near the park" },
-  { prompt: "Talk about a rule.", words: ["you", "must", "not", "use", "your", "phone", "during", "class"], answer: "you must not use your phone during class" },
-  { prompt: "Describe something you like.", words: ["I", "really", "enjoy", "walking", "by", "the", "river", "at", "sunset"], answer: "I really enjoy walking by the river at sunset" },
-];
-
-const ALL_FILL_STORIES = [
-  {
-    story: "The old lighthouse stood at the [BLANK1] of the rocky cliff, watching over the sea. Every evening, the lighthouse keeper would [BLANK2] the great lamp to guide ships safely home. One [BLANK3] night, a fierce storm rolled in from the north. The winds were [BLANK4] and the rain lashed the windows. Despite the danger, the keeper remained [BLANK5], knowing sailors depended on that steady beam of light.",
-    blanks: [{ id: "BLANK1", answer: "edge" }, { id: "BLANK2", answer: "light" }, { id: "BLANK3", answer: "stormy" }, { id: "BLANK4", answer: "fierce" }, { id: "BLANK5", answer: "calm" }],
-    wordBank: ["edge", "light", "stormy", "fierce", "calm", "soft", "center", "dark", "extinguish", "gentle"],
-  },
-  {
-    story: "Maria woke up early on the [BLANK1] morning of her first day at university. Her heart was [BLANK2] with excitement as she packed her bag. The campus was [BLANK3] with students from all over the world. She found a seat in the lecture hall and [BLANK4] her notebook, ready to learn. By the end of the day, she had already made two [BLANK5] friends.",
-    blanks: [{ id: "BLANK1", answer: "bright" }, { id: "BLANK2", answer: "filled" }, { id: "BLANK3", answer: "crowded" }, { id: "BLANK4", answer: "opened" }, { id: "BLANK5", answer: "wonderful" }],
-    wordBank: ["bright", "filled", "crowded", "opened", "wonderful", "dark", "empty", "closed", "bored", "terrible"],
-  },
-  {
-    story: "Every winter, the small village held a [BLANK1] festival that lasted an entire week. The streets were decorated with [BLANK2] lanterns that glowed in the cold night air. Families gathered around fire pits to share [BLANK3] soup and stories from the past year. The children's favourite part was the puppet show performed by a [BLANK4] old man who had done it for decades. At midnight, everyone would [BLANK5] and watch the fireworks light up the sky.",
-    blanks: [{ id: "BLANK1", answer: "traditional" }, { id: "BLANK2", answer: "colourful" }, { id: "BLANK3", answer: "hot" }, { id: "BLANK4", answer: "talented" }, { id: "BLANK5", answer: "gather" }],
-    wordBank: ["traditional", "colourful", "hot", "talented", "gather", "modern", "plain", "cold", "clumsy", "scatter"],
-  },
-  {
-    story: "The small bakery on the corner had a [BLANK1] smell that drifted down the whole street. Every morning, the baker would [BLANK2] fresh loaves of bread and arrange them in the window. Customers would form a [BLANK3] line outside the door before it even opened. The most [BLANK4] item was a golden croissant dusted with sugar. People said it tasted like a [BLANK5] dream.",
-    blanks: [{ id: "BLANK1", answer: "delicious" }, { id: "BLANK2", answer: "bake" }, { id: "BLANK3", answer: "long" }, { id: "BLANK4", answer: "popular" }, { id: "BLANK5", answer: "sweet" }],
-    wordBank: ["delicious", "bake", "long", "popular", "sweet", "horrible", "burn", "short", "forgotten", "bitter"],
-  },
-  {
-    story: "The explorer had been [BLANK1] through the jungle for three days when she finally spotted the ancient ruins. The stone walls were [BLANK2] with vines and moss. She [BLANK3] her hand over the carved symbols, wondering what they meant. Inside the main chamber, a shaft of [BLANK4] light fell through a hole in the ceiling. She felt a deep [BLANK5] that she had discovered something extraordinary.",
-    blanks: [{ id: "BLANK1", answer: "travelling" }, { id: "BLANK2", answer: "covered" }, { id: "BLANK3", answer: "ran" }, { id: "BLANK4", answer: "golden" }, { id: "BLANK5", answer: "certainty" }],
-    wordBank: ["travelling", "covered", "ran", "golden", "certainty", "resting", "bare", "threw", "pale", "doubt"],
-  },
-  {
-    story: "The library was [BLANK1] except for the soft ticking of the clock on the wall. Leo had spent every afternoon there since moving to the new town, finding [BLANK2] among the shelves. He [BLANK3] a book about astronomy and settled into his favourite armchair. As the afternoon light grew [BLANK4], he lost track of time completely. When the librarian finally tapped his shoulder, he [BLANK5] with surprise.",
-    blanks: [{ id: "BLANK1", answer: "silent" }, { id: "BLANK2", answer: "comfort" }, { id: "BLANK3", answer: "chose" }, { id: "BLANK4", answer: "dim" }, { id: "BLANK5", answer: "jumped" }],
-    wordBank: ["silent", "comfort", "chose", "dim", "jumped", "noisy", "loneliness", "refused", "bright", "slept"],
-  },
-  {
-    story: "The rescue dog arrived at the shelter looking [BLANK1] and frightened. The volunteers worked [BLANK2] to earn her trust, offering food and gentle words. Within a week, her tail began to [BLANK3] when anyone entered the room. A family came to [BLANK4] a dog and immediately fell in love with her soft brown eyes. On the day she left, every volunteer felt both [BLANK5] and overjoyed.",
-    blanks: [{ id: "BLANK1", answer: "thin" }, { id: "BLANK2", answer: "patiently" }, { id: "BLANK3", answer: "wag" }, { id: "BLANK4", answer: "adopt" }, { id: "BLANK5", answer: "sad" }],
-    wordBank: ["thin", "patiently", "wag", "adopt", "sad", "healthy", "rudely", "droop", "abandon", "angry"],
-  },
-];
-
-function getDailyData(seed) {
-  const rng1 = makePRNG(seed ^ 0xabc1);
-  const rng2 = makePRNG(seed ^ 0xdef2);
-  const rng3 = makePRNG(seed ^ 0x1234);
-  const storyIdx = Math.floor(rng3() * ALL_FILL_STORIES.length);
-
-  return {
-    wordMatch: seededShuffle(ALL_WORD_MATCH, rng1).slice(0, 6),
-    sentenceBuilder: seededShuffle(ALL_SENTENCE_BUILDER, rng2).slice(0, 5),
-    fillStory: ALL_FILL_STORIES[storyIdx],
-  };
 }
 
 function shuffle(arr) {
@@ -155,41 +38,110 @@ function randomizeWordMatchQuestions(questions) {
   });
 }
 
-const GAME_CARDS = [
-  { id: 0, level: "beginner", tag: "Beginner", title: "🎯 Word Match", modalTitle: "🎯 Word Match", desc: "See a word and choose the correct definition. Build your vocabulary one word at a time.", time: "~2 min" },
-  { id: 1, level: "intermediate", tag: "Intermediate", title: "🧩 Sentence Builder", modalTitle: "🧩 Sentence Builder", desc: "Arrange scrambled words into correct sentences. Practice grammar and word order.", time: "~3 min" },
-  { id: 2, level: "advanced", tag: "Advanced", title: "📖 Fill the Story", modalTitle: "📖 Fill the Story", desc: "Complete a short story by choosing the right word for each blank. Test context and nuance.", time: "~4 min" },
-];
 const GAME_POINTS = { 0: 5, 1: 10, 2: 15 };
 const PERFECT_DAY_BONUS_POINTS = 10;
 
 const INITIAL_PROGRESS = { completed: [false, false, false], scores: [0, 0, 0], reviewDetails: { 0: [], 1: [], 2: [] } };
 const ARCHIVE_KEY = "wordplay-game-archive";
+const SCHOOL_INTEREST_KEY = "wordplay-school-interest-leads";
 const ACTIVE_SESSION_KEY_PREFIX = "wordplay-active-session-";
 const LEGACY_ACCOUNT_KEY = "wordplay-account";
 const ACCOUNTS_KEY = "wordplay-accounts";
 const SESSION_KEY = "wordplay-current-user";
+/** Keep signed-in session in localStorage for this long (refreshes on each visit while logged in). */
+const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+const COOKIE_CONSENT_KEY = "wordplay-cookie-consent";
+const COOKIE_CONSENT_VERSION = 1;
 
-function formatArchiveDate(key) {
+function parseCookieConsent() {
+  try {
+    const raw = localStorage.getItem(COOKIE_CONSENT_KEY);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    if (o?.v !== COOKIE_CONSENT_VERSION) return null;
+    return {
+      necessary: true,
+      analytics: Boolean(o.analytics),
+      marketing: Boolean(o.marketing),
+      at: typeof o.at === "string" ? o.at : "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistUserSession(email) {
+  const expiresAt = Date.now() + SESSION_DURATION_MS;
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ email, expiresAt }));
+}
+
+function readStoredSessionEmail() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return "";
+    try {
+      const o = JSON.parse(raw);
+      if (o && typeof o.email === "string" && typeof o.expiresAt === "number") {
+        if (Date.now() > o.expiresAt) {
+          localStorage.removeItem(SESSION_KEY);
+          return "";
+        }
+        return o.email;
+      }
+    } catch {
+      // Legacy: plain email string only
+      const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw.trim());
+      if (emailIsValid) {
+        persistUserSession(raw.trim().toLowerCase());
+        return raw.trim().toLowerCase();
+      }
+      localStorage.removeItem(SESSION_KEY);
+      return "";
+    }
+    localStorage.removeItem(SESSION_KEY);
+    return "";
+  } catch {
+    return "";
+  }
+}
+
+function saveCookieConsent(analytics, marketing) {
+  const payload = {
+    v: COOKIE_CONSENT_VERSION,
+    necessary: true,
+    analytics,
+    marketing,
+    at: new Date().toISOString(),
+  };
+  localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify(payload));
+  return {
+    necessary: true,
+    analytics,
+    marketing,
+    at: payload.at,
+  };
+}
+
+function formatArchiveDate(key, locale = "en-GB") {
   if (!/^\d{8}$/.test(key)) return key;
   const year = key.slice(0, 4);
   const month = key.slice(4, 6);
   const day = key.slice(6, 8);
   const dt = new Date(`${year}-${month}-${day}T12:00:00`);
-  return dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  return dt.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 }
 
-function getResultSummary(score, total) {
+function getResultSummary(score, total, t) {
   const pct = total === 0 ? 0 : score / total;
   return {
     stars: pct === 1 ? "🌟" : pct >= 0.7 ? "🎉" : "💪",
-    title: pct === 1 ? "Perfect score!" : pct >= 0.7 ? "Well done!" : "Keep practicing!",
+    title: pct === 1 ? t("resultSummary.perfectTitle") : pct >= 0.7 ? t("resultSummary.wellTitle") : t("resultSummary.keepTitle"),
     msg:
       pct === 1
-        ? "You got every answer right. Impressive!"
+        ? t("resultSummary.perfectMsg")
         : pct >= 0.7
-          ? "Good job! A little more practice and you'll be perfect."
-          : "Don't give up — every attempt makes you better!",
+          ? t("resultSummary.wellMsg")
+          : t("resultSummary.keepMsg"),
   };
 }
 
@@ -281,14 +233,52 @@ function mergeWithDemoLeaderboard(realSorted, seedBase, studentCodeFilter) {
 }
 
 export default function App() {
+  const { t, language, setLanguage } = useI18n();
+  /** English-only copy for modal bodies; buttons still use `t`. */
+  const tEn = useMemo(() => makeTranslator(getMergedMessages("en")), []);
   const todayKey = useMemo(() => getTodayKey(), []);
   const dailySeed = useMemo(() => parseInt(todayKey, 10), [todayKey]);
   const gameData = useMemo(() => getDailyData(dailySeed), [dailySeed]);
   const progressKey = `wordplay-progress-${todayKey}`;
   const activeSessionKey = `${ACTIVE_SESSION_KEY_PREFIX}${todayKey}`;
+  const dateLocale = DATE_LOCALE_BY_UI[language] || "en-GB";
   const dateLabel = useMemo(
-    () => new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }),
-    [],
+    () => new Date().toLocaleDateString(dateLocale, { weekday: "long", day: "numeric", month: "long" }),
+    [dateLocale],
+  );
+
+  /** Card copy stays English; only level tags follow UI language. */
+  const gameCards = useMemo(
+    () => [
+      {
+        id: 0,
+        level: "beginner",
+        tag: t("games.wmTag"),
+        title: "🎯 Word Match",
+        modalTitle: "🎯 Word Match",
+        desc: "See a word and choose the correct definition. Build your vocabulary one word at a time.",
+        time: "~2 min",
+      },
+      {
+        id: 1,
+        level: "intermediate",
+        tag: t("games.sbTag"),
+        title: "🧩 Sentence Builder",
+        modalTitle: "🧩 Sentence Builder",
+        desc: "Arrange scrambled words into correct sentences. Practice grammar and word order.",
+        time: "~3 min",
+      },
+      {
+        id: 2,
+        level: "advanced",
+        tag: t("games.fsTag"),
+        title: "📖 Fill the Story",
+        modalTitle: "📖 Fill the Story",
+        desc: "Complete a short story by choosing the right word for each blank. Test context and nuance.",
+        time: "~4 min",
+      },
+    ],
+    [t],
   );
 
   const [progress, setProgress] = useState(() => {
@@ -328,13 +318,7 @@ export default function App() {
       return [];
     }
   });
-  const [currentUserEmail, setCurrentUserEmail] = useState(() => {
-    try {
-      return localStorage.getItem(SESSION_KEY) || "";
-    } catch {
-      return "";
-    }
-  });
+  const [currentUserEmail, setCurrentUserEmail] = useState(() => readStoredSessionEmail());
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState("signup");
   const [authEmail, setAuthEmail] = useState("");
@@ -347,10 +331,21 @@ export default function App() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [cookieConsent, setCookieConsent] = useState(() => parseCookieConsent());
+  const [cookiePanelOpen, setCookiePanelOpen] = useState(false);
+  const [cookieDetailsOpen, setCookieDetailsOpen] = useState(false);
+  const [draftAnalytics, setDraftAnalytics] = useState(false);
+  const [draftMarketing, setDraftMarketing] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.location.hash === "#privacy";
+  });
   const [statsScope, setStatsScope] = useState("all");
   const [settingsStudentCode, setSettingsStudentCode] = useState("");
+  const [schoolLeadEmail, setSchoolLeadEmail] = useState("");
+  const [schoolLeadSchool, setSchoolLeadSchool] = useState("");
   const [activeSessions, setActiveSessions] = useState(() => {
     try {
       const parsed = JSON.parse(localStorage.getItem(`${ACTIVE_SESSION_KEY_PREFIX}${getTodayKey()}`) || "null");
@@ -383,7 +378,7 @@ export default function App() {
   }, [accounts]);
 
   useEffect(() => {
-    if (currentUserEmail) localStorage.setItem(SESSION_KEY, currentUserEmail);
+    if (currentUserEmail) persistUserSession(currentUserEmail);
     else localStorage.removeItem(SESSION_KEY);
   }, [currentUserEmail]);
 
@@ -405,17 +400,39 @@ export default function App() {
   }, [currentUserEmail]);
 
   useEffect(() => {
-    document.body.style.overflow = modalOpen ? "hidden" : "";
+    const lockScroll = modalOpen || privacyPolicyOpen;
+    document.body.style.overflow = lockScroll ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [modalOpen]);
+  }, [modalOpen, privacyPolicyOpen]);
+
+  useEffect(() => {
+    const syncPrivacyFromHash = () => {
+      setPrivacyPolicyOpen(window.location.hash === "#privacy");
+    };
+    syncPrivacyFromHash();
+    window.addEventListener("hashchange", syncPrivacyFromHash);
+    return () => window.removeEventListener("hashchange", syncPrivacyFromHash);
+  }, []);
 
   useEffect(() => {
     if (!toastMessage) return undefined;
     const timer = setTimeout(() => setToastMessage(""), 2600);
     return () => clearTimeout(timer);
   }, [toastMessage]);
+
+  useEffect(() => {
+    const panelOpen = cookieConsent === null || cookiePanelOpen;
+    if (!panelOpen) return;
+    if (cookieConsent) {
+      setDraftAnalytics(cookieConsent.analytics);
+      setDraftMarketing(cookieConsent.marketing);
+    } else {
+      setDraftAnalytics(false);
+      setDraftMarketing(false);
+    }
+  }, [cookieConsent, cookiePanelOpen]);
 
   const previousArchiveKeys = Object.keys(archiveData)
     .filter((key) => key !== todayKey)
@@ -435,7 +452,7 @@ export default function App() {
       return;
     }
     if (previousArchiveKeys.length === 0) {
-      setToastMessage("No archive saved yet. Come back tomorrow for your first archive entry.");
+      setToastMessage(t("toasts.noArchive"));
       return;
     }
     setArchiveOpen(true);
@@ -472,25 +489,25 @@ export default function App() {
   const handleSignup = () => {
     const email = authEmail.trim().toLowerCase();
     if (!email || !authPassword || !authConfirmPassword) {
-      setAuthError("Please fill in email, password, and confirm password.");
+      setAuthError(tEn("errors.fillAll"));
       return;
     }
     const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (!emailIsValid) {
-      setAuthError("Please enter a valid email address.");
+      setAuthError(tEn("errors.invalidEmail"));
       return;
     }
     if (!isStrongPassword(authPassword)) {
-      setAuthError("Your password is not strong enough. Please follow all password rules.");
+      setAuthError(tEn("errors.weakPassword"));
       return;
     }
     if (authPassword !== authConfirmPassword) {
-      setAuthError("Passwords do not match. Please re-enter them.");
+      setAuthError(tEn("errors.passwordMismatch"));
       return;
     }
     const alreadyExists = accounts.some((acct) => acct.email === email);
     if (alreadyExists) {
-      setAuthError("An account with this email already exists. Please sign in.");
+      setAuthError(tEn("errors.accountExists"));
       return;
     }
     const normalizedStudentCode = authStudentCode.trim().toUpperCase();
@@ -512,11 +529,11 @@ export default function App() {
   const handleSignin = () => {
     const email = authEmail.trim().toLowerCase();
     if (!email || !authPassword) {
-      setAuthError("Please enter both email and password.");
+      setAuthError(tEn("errors.enterBoth"));
       return;
     }
     if (accounts.length === 0) {
-      setAuthError("No account found. Please sign up first.");
+      setAuthError(tEn("errors.noAccount"));
       return;
     }
     const matched = accounts.find((acct) => acct.email === email && acct.password === authPassword);
@@ -527,7 +544,7 @@ export default function App() {
       resetAuthForm();
       return;
     }
-    setAuthError("Invalid email or password.");
+    setAuthError(tEn("errors.invalidCredentials"));
   };
 
   const passwordChecks = getPasswordValidation(authPassword);
@@ -558,8 +575,45 @@ export default function App() {
     setAccounts((prev) =>
       prev.map((acct) => (acct.email === currentUser.email ? { ...acct, studentCode: normalizedStudentCode } : acct)),
     );
-    setToastMessage(normalizedStudentCode ? "Classroom code updated." : "Classroom code cleared.");
+    setToastMessage(normalizedStudentCode ? t("toasts.codeUpdated") : t("toasts.codeCleared"));
     setSettingsOpen(false);
+  };
+
+  const handleSchoolLeadSubmit = (e) => {
+    e.preventDefault();
+    const email = schoolLeadEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setToastMessage(t("schools.invalidEmail"));
+      return;
+    }
+    let list = [];
+    try {
+      const raw = localStorage.getItem(SCHOOL_INTEREST_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) list = parsed;
+      }
+    } catch {
+      list = [];
+    }
+    if (list.some((entry) => entry.email === email)) {
+      setToastMessage(t("schools.duplicateToast"));
+      return;
+    }
+    list.push({
+      email,
+      school: schoolLeadSchool.trim(),
+      at: new Date().toISOString(),
+    });
+    try {
+      localStorage.setItem(SCHOOL_INTEREST_KEY, JSON.stringify(list));
+    } catch {
+      setToastMessage(t("schools.saveFailed"));
+      return;
+    }
+    setToastMessage(t("schools.successToast"));
+    setSchoolLeadEmail("");
+    setSchoolLeadSchool("");
   };
 
   const handleShareFacebook = () => {
@@ -570,15 +624,15 @@ export default function App() {
   const handleCopyInviteLink = async () => {
     try {
       await navigator.clipboard.writeText(inviteMessage);
-      setToastMessage("Invite message copied! Share it with your friend.");
+      setToastMessage(t("toasts.copied"));
     } catch {
-      setToastMessage("Could not copy automatically. Please copy and share manually.");
+      setToastMessage(t("toasts.copyFailed"));
     }
   };
 
   const handleSendText = () => {
     if (!isMobileDevice()) {
-      setToastMessage("Send text is available on mobile devices only.");
+      setToastMessage(t("toasts.textMobileOnly"));
       return;
     }
     window.location.href = `sms:?&body=${encodeURIComponent(inviteMessage)}`;
@@ -631,13 +685,13 @@ export default function App() {
       }),
     );
 
-    setToastMessage(`🏆 Achievement unlocked! Perfect score in all 3 games today. +${PERFECT_DAY_BONUS_POINTS} bonus points!`);
-  }, [currentUser, progress, todayKey, gameTotals]);
+    setToastMessage(t("toasts.achievement", { pts: PERFECT_DAY_BONUS_POINTS }));
+  }, [currentUser, progress, todayKey, gameTotals, t]);
 
   const openReview = (gameId) => {
     const total = gameTotals[gameId];
     const score = progress.scores[gameId] || 0;
-    const summary = getResultSummary(score, total);
+    const summary = getResultSummary(score, total, tEn);
     const allAnswers = progress.reviewDetails?.[gameId] || [];
     const wrongAnswers = allAnswers.filter((item) => !item.isCorrect);
     setCurrentGame(gameId);
@@ -723,7 +777,7 @@ export default function App() {
   };
 
   const showResult = (gameId, score, total, reviewDetails = []) => {
-    const summary = getResultSummary(score, total);
+    const summary = getResultSummary(score, total, tEn);
 
     setProgress((prev) => {
       const next = {
@@ -939,7 +993,7 @@ export default function App() {
         : fs.data.blanks.map((blank, i) => ({
             prompt: `Blank ${i + 1}`,
             blankId: blank.id,
-            yourAnswer: fs.inputs[i].trim() || "(blank)",
+            yourAnswer: fs.inputs[i].trim() || tEn("result.blank"),
             correctAnswer: blank.answer,
             isCorrect: fs.inputs[i].trim().toLowerCase() === blank.answer.toLowerCase(),
           }));
@@ -977,19 +1031,44 @@ export default function App() {
   const progressRingFraction = completedCount === 0 ? 0.14 : completedCount / 3;
   const progressRingDash = progressRingCirc * progressRingFraction;
 
+  const openPrivacyPolicy = () => {
+    setCookiePanelOpen(false);
+    setCookieDetailsOpen(false);
+    setPrivacyPolicyOpen(true);
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#privacy`);
+  };
+
+  const closePrivacyPolicy = () => {
+    setPrivacyPolicyOpen(false);
+    if (window.location.hash === "#privacy") {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    }
+  };
+
+  const showCookiePanel = (cookieConsent === null || cookiePanelOpen) && !privacyPolicyOpen;
+
   return (
-    <div className="wordplay-app">
+    <div className={`wordplay-app${showCookiePanel ? " has-cookie-banner" : ""}`}>
       <nav>
         <a className="nav-logo" href="#">
-          <img src={logoImage} alt="English Everyday Play logo" className="nav-logo-icon" />
+          <img src={logoImage} alt={t("logoAlt")} className="nav-logo-icon" />
           <span className="logo-desktop">English Everyday</span>
         </a>
         <div className="nav-actions">
+          <div className="nav-language-slot">
+            <LanguageSelect
+              id="nav-language-select"
+              value={language}
+              onChange={setLanguage}
+              ariaLabel={t("settings.language")}
+              variant="nav"
+            />
+          </div>
           {currentUser && (
             <div
               className="progress-ring-wrap"
               role="img"
-              aria-label={`Daily progress: ${completedCount} of 3 games completed`}
+              aria-label={t("nav.progressRing", { n: completedCount })}
             >
               <svg
                 className="progress-ring"
@@ -1031,9 +1110,11 @@ export default function App() {
                 type="button"
                 aria-expanded={profileMenuOpen}
                 aria-haspopup="true"
-                aria-label="Account menu"
+                aria-label={t("nav.accountMenu")}
               >
-                <span>⭐ {currentUser.points || 0} pts</span>
+                <span>
+                  ⭐ {currentUser.points || 0} {t("nav.pts")}
+                </span>
                 <span className="profile-user-icon" aria-hidden="true">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
                     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.75" />
@@ -1050,7 +1131,7 @@ export default function App() {
               {profileMenuOpen && (
                 <div className="profile-menu">
                   <button className="profile-menu-item" onClick={openStats} type="button">
-                    My Stats
+                    {t("nav.myStats")}
                   </button>
                   <button
                     className="profile-menu-item"
@@ -1060,41 +1141,55 @@ export default function App() {
                     }}
                     type="button"
                   >
-                    Archive
+                    {t("nav.archive")}
                   </button>
                   <button className="profile-menu-item" onClick={openSettings} type="button">
-                    Settings
+                    {t("nav.settings")}
                   </button>
                   <button className="profile-menu-item" onClick={handleSignout} type="button">
-                    Sign out
+                    {t("nav.signOut")}
                   </button>
                 </div>
               )}
             </div>
           ) : (
-            <button
-              className="btn-primary nav-signup-btn"
-              onClick={() => {
-                setAuthMode("signup");
-                setAuthOpen(true);
-              }}
-              type="button"
-            >
-              Sign Up
-            </button>
+            <>
+              <button
+                className="btn-secondary nav-signin-btn"
+                onClick={() => {
+                  setAuthMode("signin");
+                  setAuthOpen(true);
+                }}
+                type="button"
+              >
+                {t("nav.signIn")}
+              </button>
+              <button
+                className="btn-primary nav-signup-btn"
+                onClick={() => {
+                  setAuthMode("signup");
+                  setAuthOpen(true);
+                }}
+                type="button"
+              >
+                {t("nav.signUp")}
+              </button>
+            </>
           )}
         </div>
       </nav>
 
       <header>
-        <div className="eyebrow">English Everyday.</div>
-        <h1>Daily English Games &amp; Puzzles</h1>
-        <p>Three quick games to practice vocabulary, grammar, and writing in minutes.</p>
-        <p className="header-date">📅 {dateLabel} · New content every day</p>
+        <div className="eyebrow">{t("header.eyebrow")}</div>
+        <h1>{t("header.title")}</h1>
+        <p>{t("header.subtitle")}</p>
+        <p className="header-date">
+          📅 {dateLabel} {t("header.dateSuffix")}
+        </p>
       </header>
 
       <div className="games-grid">
-        {GAME_CARDS.map((game) => (
+        {gameCards.map((game) => (
           <div
             key={game.id}
             className={`game-card ${game.level}`}
@@ -1110,7 +1205,7 @@ export default function App() {
               {progress.completed[game.id] ? (
                 <div className="meta-actions">
                   <span className="completed-score">
-                    Score: {progress.scores[game.id] || 0}/{gameTotals[game.id]}
+                    {t("gameCard.score")} {progress.scores[game.id] || 0}/{gameTotals[game.id]}
                   </span>
                   <button
                     className="play-btn"
@@ -1120,7 +1215,7 @@ export default function App() {
                     }}
                     type="button"
                   >
-                    Review
+                    {t("gameCard.review")}
                   </button>
                   <button
                     className="btn-secondary card-archive-btn"
@@ -1130,7 +1225,7 @@ export default function App() {
                     }}
                     type="button"
                   >
-                    See Archive
+                    {t("gameCard.viewArchive")}
                   </button>
                 </div>
               ) : (
@@ -1143,7 +1238,7 @@ export default function App() {
                     }}
                     type="button"
                   >
-                    {activeSessions[game.id] ? "Resume" : "Play →"}
+                    {activeSessions[game.id] ? t("gameCard.resume") : t("gameCard.play")}
                   </button>
                   <span className="time-tag">⏱ {game.time}</span>
                 </>
@@ -1155,30 +1250,115 @@ export default function App() {
 
       <div className="bottom-archive-row">
         <button className="btn-secondary archive-btn" onClick={openArchive} type="button">
-          🗂️ View Archive
+          {t("home.viewArchive")}
         </button>
         <button className="btn-primary invite-btn" onClick={() => setInviteOpen(true)} type="button">
-          Invite friend to play
+          {t("home.inviteFriend")}
         </button>
       </div>
 
-      <footer>Your progress is saved on this device. New questions appear every day - come back tomorrow! 🗓️</footer>
+      <section className="schools-section" aria-labelledby="schools-section-title">
+        <div className="schools-inner">
+          <div className="schools-copy">
+            <h2 id="schools-section-title" className="schools-title">
+              {t("schools.title")}
+            </h2>
+            <p className="schools-subtitle">{t("schools.subtitle")}</p>
+            <ul className="schools-features">
+              <li>{t("schools.feature1")}</li>
+              <li>{t("schools.feature2")}</li>
+              <li>{t("schools.feature3")}</li>
+            </ul>
+          </div>
+          <form className="schools-form" onSubmit={handleSchoolLeadSubmit}>
+            <label className="auth-label" htmlFor="school-lead-email">
+              {t("schools.emailLabel")}
+            </label>
+            <input
+              id="school-lead-email"
+              className="auth-input"
+              type="email"
+              name="email"
+              autoComplete="email"
+              value={schoolLeadEmail}
+              onChange={(e) => setSchoolLeadEmail(e.target.value)}
+              placeholder={t("schools.emailPlaceholder")}
+            />
+            <label className="auth-label schools-form-gap" htmlFor="school-lead-school">
+              {t("schools.schoolLabel")}
+            </label>
+            <input
+              id="school-lead-school"
+              className="auth-input"
+              type="text"
+              name="organization"
+              autoComplete="organization"
+              value={schoolLeadSchool}
+              onChange={(e) => setSchoolLeadSchool(e.target.value)}
+              placeholder={t("schools.schoolPlaceholder")}
+            />
+            <button className="btn-primary schools-submit" type="submit">
+              {t("schools.submit")}
+            </button>
+            <p className="schools-privacy-note">{t("schools.privacyNote")}</p>
+          </form>
+        </div>
+      </section>
+
+      <footer>
+        <p className="footer-tagline">{t("footer.tagline")}</p>
+        <div className="footer-links">
+          <button type="button" className="footer-legal-link" onClick={openPrivacyPolicy}>
+            {t("footer.privacyPolicy")}
+          </button>
+          <button
+            type="button"
+            className="footer-cookie-link"
+            onClick={() => {
+              setCookiePanelOpen(true);
+              setCookieDetailsOpen(true);
+            }}
+          >
+            {t("footer.cookieSettings")}
+          </button>
+          <a
+            className="footer-donate-link"
+            href="https://buymeacoffee.com/englisheverydayplay"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t("footer.donate")}
+          </a>
+        </div>
+      </footer>
+
+      {privacyPolicyOpen && <PrivacyPolicyPage onClose={closePrivacyPolicy} />}
 
       {settingsOpen && currentUser && (
         <div className="result-page">
           <div className="result-page-header">
             <button className="btn-secondary" onClick={() => setSettingsOpen(false)} type="button">
-              ← Back to Homepage
+              {t("settings.backHome")}
             </button>
           </div>
           <div className="result-page-content">
             <div className="result-screen show stats-page-content">
               <div className="result-icon">⚙️</div>
-              <h3>Settings</h3>
-              <p>Manage your account preferences and classroom grouping.</p>
+              <h3>{t("settings.title")}</h3>
+              <p>{t("settings.subtitle")}</p>
               <div className="settings-panel">
-                <label className="auth-label" htmlFor="settings-student-code">
-                  Classroom / Student Code
+                <label className="auth-label" id="settings-language-label" htmlFor="settings-language-select">
+                  {t("settings.language")}
+                </label>
+                <p className="settings-help settings-language-desc">{t("settings.languageHelp")}</p>
+                <LanguageSelect
+                  id="settings-language-select"
+                  value={language}
+                  onChange={setLanguage}
+                  labelledBy="settings-language-label"
+                />
+                <label className="auth-label settings-field-spaced" htmlFor="settings-student-code">
+                  {t("settings.classroomLabel")}
                 </label>
                 <input
                   id="settings-student-code"
@@ -1186,15 +1366,15 @@ export default function App() {
                   type="text"
                   value={settingsStudentCode}
                   onChange={(e) => setSettingsStudentCode(e.target.value)}
-                  placeholder="e.g. CLASS-7A"
+                  placeholder={t("settings.classroomPlaceholder")}
                 />
-                <div className="settings-help">Use this code to join a classroom leaderboard. Leave blank to remove.</div>
+                <div className="settings-help">{t("settings.classroomHelp")}</div>
                 <div className="settings-actions">
                   <button className="btn-secondary" onClick={() => setSettingsOpen(false)} type="button">
-                    Cancel
+                    {t("settings.cancel")}
                   </button>
                   <button className="btn-primary" onClick={saveSettings} type="button">
-                    Save
+                    {t("settings.save")}
                   </button>
                 </div>
               </div>
@@ -1207,39 +1387,39 @@ export default function App() {
         <div className="result-page">
           <div className="result-page-header">
             <button className="btn-secondary" onClick={() => setStatsOpen(false)} type="button">
-              ← Back to Homepage
+              {t("stats.backHome")}
             </button>
           </div>
           <div className="result-page-content">
             <div className="result-screen show stats-page-content">
               <div className="result-icon">📊</div>
-              <h3>My Stats</h3>
-              <p>Track your progress and ranking against other players on this device.</p>
+              <h3>{t("stats.title")}</h3>
+              <p>{t("stats.subtitle")}</p>
               <div className="stats-grid">
                 <div className="stats-card">
-                  <div className="stats-label">Total Points</div>
+                  <div className="stats-label">{t("stats.totalPoints")}</div>
                   <div className="stats-value">⭐ {currentUser.points || 0}</div>
                 </div>
                 <div className="stats-card">
-                  <div className="stats-label">Ranking</div>
+                  <div className="stats-label">{t("stats.ranking")}</div>
                   <div className="stats-value">
-                    {currentRank ? `#${currentRank} of ${totalUsers}` : "N/A"}
+                    {currentRank
+                      ? t("stats.rankOf", { rank: currentRank, total: totalUsers })
+                      : t("stats.na")}
                   </div>
                 </div>
                 <div className="stats-card">
-                  <div className="stats-label">Top Percentile</div>
-                  <div className="stats-value">{percentile ? `${percentile}%` : "N/A"}</div>
+                  <div className="stats-label">{t("stats.topPercentile")}</div>
+                  <div className="stats-value">{percentile ? `${percentile}%` : t("stats.na")}</div>
                 </div>
                 <div className="stats-card">
-                  <div className="stats-label">Perfect Days</div>
+                  <div className="stats-label">{t("stats.perfectDays")}</div>
                   <div className="stats-value">🏆 {perfectDays}</div>
                 </div>
               </div>
-              <div className="stats-subheading">Leaderboard (this device)</div>
+              <div className="stats-subheading">{t("stats.leaderboardHeading")}</div>
               {usingDemoLeaderboardFill && (
-                <div className="stats-note">
-                  Sample learner profiles are shown until {MIN_LEADERBOARD_USERS}+ real accounts exist on this device. Your stats are real.
-                </div>
+                <div className="stats-note">{t("stats.demoNote", { min: MIN_LEADERBOARD_USERS })}</div>
               )}
               <div className="stats-toggle-row">
                 <button
@@ -1247,7 +1427,7 @@ export default function App() {
                   onClick={() => setStatsScope("all")}
                   type="button"
                 >
-                  All Players
+                  {t("stats.allPlayers")}
                 </button>
                 <button
                   className={`btn-secondary stats-toggle-btn ${statsScope === "classroom" ? "active" : ""}`}
@@ -1255,14 +1435,14 @@ export default function App() {
                   type="button"
                   disabled={!classroomCode}
                 >
-                  My Classroom
+                  {t("stats.myClassroom")}
                 </button>
               </div>
-              {!classroomCode && <div className="stats-note">Add a student code at signup to unlock classroom rankings.</div>}
+              {!classroomCode && <div className="stats-note">{t("stats.classroomHint")}</div>}
               <div className="leaderboard-list">
                 {displayedLeaderboard.length === 0 ? (
                   <div className="leaderboard-empty">
-                    {statsScope === "classroom" ? "No classmates found yet for this student code." : "No players yet."}
+                    {statsScope === "classroom" ? t("stats.noClassmates") : t("stats.noPlayers")}
                   </div>
                 ) : (
                   displayedLeaderboard.map((acct, idx) => (
@@ -1273,9 +1453,11 @@ export default function App() {
                       <span className="leaderboard-rank">#{idx + 1}</span>
                       <span className="leaderboard-name">
                         {acct.email}
-                        {acct.isDemo && <span className="demo-badge">Sample</span>}
+                        {acct.isDemo && <span className="demo-badge">{t("stats.sample")}</span>}
                       </span>
-                      <span className="leaderboard-points">{acct.points || 0} pts</span>
+                      <span className="leaderboard-points">
+                        {acct.points || 0} {t("nav.pts")}
+                      </span>
                     </div>
                   ))
                 )}
@@ -1289,7 +1471,7 @@ export default function App() {
         <div className="result-page">
           <div className="result-page-header">
             <button className="btn-secondary" onClick={backToHomepage} type="button">
-              ← Back to Homepage
+              {t("result.backHome")}
             </button>
           </div>
           <div className="result-page-content">
@@ -1302,7 +1484,7 @@ export default function App() {
               <p>{resultState.msg}</p>
               {resultState.gameId === 2 && resultState.allAnswers && resultState.allAnswers.length > 0 && (
                 <div className="review-wrong-list">
-                  <h4>Story Review</h4>
+                  <h4>{tEn("result.storyReview")}</h4>
                   <div className="story-review-context">
                     {gameData.fillStory.story.split(/(\[BLANK\d+\])/g).map((part, idx) => {
                       const match = part.match(/\[(BLANK\d+)\]/);
@@ -1322,34 +1504,34 @@ export default function App() {
               )}
               {resultState.gameId !== 2 && (
                 <div className="review-wrong-list">
-                  <h4>Questions to Review</h4>
+                  <h4>{tEn("result.questionsReview")}</h4>
                   {resultState.wrongAnswers && resultState.wrongAnswers.length > 0 ? (
                     resultState.wrongAnswers.map((item, idx) => (
                       <div className="review-wrong-item" key={`${item.prompt}-${idx}`}>
                         <div className="review-prompt">{item.prompt}</div>
                         <div className="review-line">
-                          <strong>Your answer:</strong> <span className="your-answer-text">{item.yourAnswer}</span>
+                          <strong>{tEn("result.yourAnswer")}</strong>{" "}
+                          <span className="your-answer-text">{item.yourAnswer}</span>
                         </div>
                         <div className="review-line">
-                          <strong>Correct answer:</strong> <span className="correct-answer-text">{item.correctAnswer}</span>
+                          <strong>{tEn("result.correctAnswer")}</strong>{" "}
+                          <span className="correct-answer-text">{item.correctAnswer}</span>
                         </div>
                       </div>
                     ))
                   ) : resultState.allAnswers && resultState.allAnswers.length > 0 ? (
-                    <div className="review-empty-note">No mistakes in this game - excellent work!</div>
+                    <div className="review-empty-note">{tEn("result.noMistakes")}</div>
                   ) : (
-                    <div className="review-empty-note">
-                      Detailed question review is available for games completed after this update. Complete a new game to see detailed mistakes and answers here.
-                    </div>
+                    <div className="review-empty-note">{tEn("result.reviewLegacy")}</div>
                   )}
                 </div>
               )}
               <div className="result-actions">
                 <button className="btn-secondary" onClick={openArchive} type="button">
-                  See Archive
+                  {t("result.viewArchive")}
                 </button>
                 <button className="btn-primary" onClick={backToHomepage} type="button">
-                  Back to Homepage
+                  {t("result.backHomeBtn")}
                 </button>
               </div>
             </div>
@@ -1361,7 +1543,7 @@ export default function App() {
         <div className="modal">
           <div className="modal-header">
             <div>
-              <h3>{currentGame >= 0 ? GAME_CARDS[currentGame].modalTitle : "Game"}</h3>
+              <h3>{currentGame >= 0 ? gameCards[currentGame].modalTitle : tEn("modal.game")}</h3>
               <div className="progress-dots">
                 {!resultState && currentGame === 0 && wm && renderDots(wm.questions.length, wm.current, wm.results)}
                 {!resultState && currentGame === 1 && sb && renderDots(sb.questions.length, sb.current, sb.results)}
@@ -1376,10 +1558,10 @@ export default function App() {
               <>
                 <div className="score-bar">
                   <span>
-                    Question {wm.current + 1} of {wm.questions.length}
+                    {tEn("modal.question")} {wm.current + 1} {tEn("modal.of")} {wm.questions.length}
                   </span>
                   <span className="score-pill">
-                    Score: {wm.score}/{wm.questions.length}
+                    {tEn("modal.score")} {wm.score}/{wm.questions.length}
                   </span>
                 </div>
                 <div className="word-display">
@@ -1401,7 +1583,7 @@ export default function App() {
                   })}
                 </div>
                 <button className={`next-btn ${wm.answered ? "show" : ""}`} onClick={onWmNext} type="button">
-                  Next →
+                  {t("modal.next")}
                 </button>
               </>
             )}
@@ -1410,15 +1592,15 @@ export default function App() {
               <>
                 <div className="score-bar">
                   <span>
-                    Question {sb.current + 1} of {sb.questions.length}
+                    {tEn("modal.question")} {sb.current + 1} {tEn("modal.of")} {sb.questions.length}
                   </span>
                   <span className="score-pill">
-                    Score: {sb.score}/{sb.questions.length}
+                    {tEn("modal.score")} {sb.score}/{sb.questions.length}
                   </span>
                 </div>
                 <div className="sentence-prompt">📝 {sbQuestion.prompt}</div>
                 <div className="sentence-area">
-                  {sb.built.length === 0 && <span className="placeholder-text">Tap words below to build your sentence...</span>}
+                  {sb.built.length === 0 && <span className="placeholder-text">{tEn("modal.tapBuild")}</span>}
                   {sb.built.map((word, i) => (
                     <button key={`${word}-${i}`} className="word-chip" onClick={() => onSbRemove(i)} type="button">
                       {word}
@@ -1434,10 +1616,10 @@ export default function App() {
                 </div>
                 <div className={`feedback-msg ${sb.feedbackKind}`}>{sb.feedback}</div>
                 <button className="check-sentence-btn" onClick={onSbCheck} disabled={sb.checked} type="button">
-                  Check Sentence
+                  {t("modal.checkSentence")}
                 </button>
                 <button className={`next-btn ${sb.checked ? "show" : ""}`} onClick={onSbNext} type="button">
-                  Next →
+                  {t("modal.next")}
                 </button>
               </>
             )}
@@ -1461,7 +1643,7 @@ export default function App() {
                     );
                   })}
                 </div>
-                <div className="word-bank-label">Word Bank - tap a word to fill the next blank</div>
+                <div className="word-bank-label">{tEn("modal.wordBankLabel")}</div>
                 <div className="hint-chips">
                   {fs.data.wordBank.map((word) => (
                     <button key={word} className={`hint-chip ${fs.used.includes(word) ? "used" : ""}`} onClick={() => onFsPickWord(word)} type="button">
@@ -1471,10 +1653,10 @@ export default function App() {
                 </div>
                 <div className={`feedback-msg ${fs.feedbackKind}`}>{fs.feedback}</div>
                 <button className="submit-story-btn" onClick={onFsSubmit} type="button">
-                  Check My Story ✓
+                  {t("modal.checkStory")}
                 </button>
                 <button className={`next-btn ${fs.submitted ? "show" : ""}`} onClick={onFsResult} type="button">
-                  See Results →
+                  {t("modal.seeResults")}
                 </button>
               </>
             )}
@@ -1486,7 +1668,7 @@ export default function App() {
         <div className="modal auth-modal">
           <div className="modal-header">
             <div>
-              <h3>{authMode === "signup" ? "Create Account to Access Archive" : "Sign In to Access Archive"}</h3>
+              <h3>{authMode === "signup" ? tEn("auth.createTitle") : tEn("auth.signInTitle")}</h3>
             </div>
             <button className="modal-close" onClick={closeAuth} type="button">
               ✕
@@ -1494,34 +1676,43 @@ export default function App() {
           </div>
           <div className="modal-body auth-body">
             <label className="auth-label" htmlFor="archive-email">
-              Email
+              {tEn("auth.email")}
             </label>
             <input id="archive-email" className="auth-input" type="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} />
-            <label className="auth-label auth-label-inline" htmlFor="archive-password">
-              Password
+            <div className="auth-password-field">
+              <label className="auth-label auth-label-inline" htmlFor="archive-password">
+                {tEn("auth.password")}
+                {authMode === "signup" && (
+                  <span className="password-info-wrap">
+                    <button
+                      type="button"
+                      className="password-info-icon"
+                      aria-describedby="password-rules-tooltip"
+                      aria-label={tEn("auth.passwordRequirements")}
+                    >
+                      i
+                    </button>
+                  </span>
+                )}
+              </label>
               {authMode === "signup" && (
-                <span className="password-info-wrap">
-                  <button type="button" className="password-info-icon" aria-describedby="password-rules-tooltip" aria-label="Password requirements">
-                    i
-                  </button>
-                  <div id="password-rules-tooltip" className="password-info-tooltip" role="tooltip">
-                    <div className="password-info-tooltip-title">Strong password</div>
-                    <ul className="password-rules">
-                      <li className={passwordChecks.minLength ? "rule-pass" : ""}>At least 8 characters</li>
-                      <li className={passwordChecks.uppercase ? "rule-pass" : ""}>At least 1 uppercase letter (A-Z)</li>
-                      <li className={passwordChecks.lowercase ? "rule-pass" : ""}>At least 1 lowercase letter (a-z)</li>
-                      <li className={passwordChecks.number ? "rule-pass" : ""}>At least 1 number (0-9)</li>
-                      <li className={passwordChecks.special ? "rule-pass" : ""}>At least 1 special character (e.g. !@#$)</li>
-                    </ul>
-                  </div>
-                </span>
+                <div id="password-rules-tooltip" className="password-info-tooltip" role="tooltip">
+                  <div className="password-info-tooltip-title">{tEn("auth.strongPassword")}</div>
+                  <ul className="password-rules">
+                    <li className={passwordChecks.minLength ? "rule-pass" : ""}>{tEn("auth.ruleMin")}</li>
+                    <li className={passwordChecks.uppercase ? "rule-pass" : ""}>{tEn("auth.ruleUpper")}</li>
+                    <li className={passwordChecks.lowercase ? "rule-pass" : ""}>{tEn("auth.ruleLower")}</li>
+                    <li className={passwordChecks.number ? "rule-pass" : ""}>{tEn("auth.ruleNumber")}</li>
+                    <li className={passwordChecks.special ? "rule-pass" : ""}>{tEn("auth.ruleSpecial")}</li>
+                  </ul>
+                </div>
               )}
-            </label>
-            <input id="archive-password" className="auth-input" type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} />
+              <input id="archive-password" className="auth-input" type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} />
+            </div>
             {authMode === "signup" && (
               <>
                 <label className="auth-label" htmlFor="student-code">
-                  Student Code (optional)
+                  {tEn("auth.studentCodeOptional")}
                 </label>
                 <input
                   id="student-code"
@@ -1532,7 +1723,7 @@ export default function App() {
                   placeholder="e.g. CLASS-7A"
                 />
                 <label className="auth-label" htmlFor="archive-confirm-password">
-                  Confirm Password
+                  {tEn("auth.confirmPassword")}
                 </label>
                 <input
                   id="archive-confirm-password"
@@ -1548,19 +1739,19 @@ export default function App() {
               {authMode === "signup" ? (
                 <>
                   <button className="btn-primary" onClick={handleSignup} type="button">
-                    Sign Up
+                    {t("auth.signUp")}
                   </button>
                   <button className="btn-secondary" onClick={() => switchAuthMode("signin")} type="button">
-                    I already have an account
+                    {t("auth.alreadyHave")}
                   </button>
                 </>
               ) : (
                 <>
                   <button className="btn-primary" onClick={handleSignin} type="button">
-                    Sign In
+                    {t("auth.signIn")}
                   </button>
                   <button className="btn-secondary" onClick={() => switchAuthMode("signup")} type="button">
-                    Create new account
+                    {t("auth.createNew")}
                   </button>
                 </>
               )}
@@ -1573,7 +1764,7 @@ export default function App() {
         <div className="modal archive-modal">
           <div className="modal-header">
             <div>
-              <h3>🗂️ Game Archive</h3>
+              <h3>{tEn("archiveModal.title")}</h3>
             </div>
             <button className="modal-close" onClick={() => setArchiveOpen(false)} type="button">
               ✕
@@ -1581,17 +1772,17 @@ export default function App() {
           </div>
           <div className="modal-body archive-body">
             {previousArchiveKeys.length === 0 ? (
-              <p>No previous days saved yet. Come back tomorrow to see your archive.</p>
+              <p>{tEn("archiveModal.empty")}</p>
             ) : (
               previousArchiveKeys.map((key) => {
                 const day = archiveData[key];
                 return (
                   <div className="archive-item" key={key}>
-                    <h4>{formatArchiveDate(key)}</h4>
+                    <h4>{formatArchiveDate(key, "en-GB")}</h4>
                     <ul>
-                      <li>🎯 Word Match: {day.wordMatch.length} questions</li>
-                      <li>🧩 Sentence Builder: {day.sentenceBuilder.length} questions</li>
-                      <li>📖 Fill the Story: 1 story set</li>
+                      <li>{tEn("archiveModal.wmLine", { n: day.wordMatch.length })}</li>
+                      <li>{tEn("archiveModal.sbLine", { n: day.sentenceBuilder.length })}</li>
+                      <li>{tEn("archiveModal.fsLine")}</li>
                     </ul>
                   </div>
                 );
@@ -1599,10 +1790,10 @@ export default function App() {
             )}
             <div className="archive-actions">
               <button className="btn-secondary" onClick={handleSignout} type="button">
-                Sign Out
+                {t("archiveModal.signOut")}
               </button>
               <button className="btn-primary" onClick={() => setArchiveOpen(false)} type="button">
-                Close
+                {t("archiveModal.close")}
               </button>
             </div>
           </div>
@@ -1612,7 +1803,7 @@ export default function App() {
         <div className="modal invite-modal">
           <div className="modal-header">
             <div>
-              <h3>Invite Friend to Play</h3>
+              <h3>{tEn("invite.title")}</h3>
             </div>
             <button className="modal-close" onClick={() => setInviteOpen(false)} type="button">
               ✕
@@ -1622,19 +1813,142 @@ export default function App() {
             <p className="invite-message-preview">{inviteMessage}</p>
             <div className="invite-actions">
               <button className="btn-secondary" onClick={handleShareFacebook} type="button">
-                Share to Facebook
+                {t("invite.shareFacebook")}
               </button>
               <button className="btn-secondary" onClick={handleCopyInviteLink} type="button">
-                Copy Link
+                {t("invite.copyLink")}
               </button>
               <button className="btn-primary" onClick={handleSendText} type="button">
-                Send Text
+                {t("invite.sendText")}
               </button>
             </div>
-            {!isMobileDevice() && <p className="invite-note">Send text works on mobile devices only.</p>}
+            {!isMobileDevice() && <p className="invite-note">{tEn("invite.noteDesktop")}</p>}
           </div>
         </div>
       </div>
+
+      {showCookiePanel && (
+        <div
+          className="cookie-banner"
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby="cookie-banner-title"
+          aria-describedby="cookie-banner-desc"
+        >
+          <div className="cookie-banner-inner">
+            {cookieConsent !== null && (
+              <button
+                type="button"
+                className="cookie-banner-dismiss"
+                onClick={() => {
+                  setCookiePanelOpen(false);
+                  setCookieDetailsOpen(false);
+                }}
+                aria-label={t("cookie.closeNotice")}
+              >
+                ✕
+              </button>
+            )}
+            <h2 id="cookie-banner-title" className="cookie-banner-title">
+              {tEn("cookie.title")}
+            </h2>
+            <p id="cookie-banner-desc" className="cookie-banner-desc">
+              {tEn("cookie.descBefore")}
+              <strong>{tEn("cookie.descStrongNecessary")}</strong>
+              {tEn("cookie.descMid")}
+              <strong>{tEn("cookie.descStrongOptional")}</strong>
+              {tEn("cookie.descAfter")}
+              <button type="button" className="cookie-banner-privacy-link" onClick={openPrivacyPolicy}>
+                {t("cookie.readPrivacy")}
+              </button>
+            </p>
+            {cookieDetailsOpen && (
+              <div className="cookie-banner-details" role="group" aria-label={tEn("cookie.categoriesAria")}>
+                <label className="cookie-toggle-row">
+                  <input type="checkbox" checked disabled aria-checked="true" />
+                  <span>
+                    <strong>{tEn("cookie.strictLabel")}</strong>
+                    {" — "}
+                    {tEn("cookie.strictDesc")}
+                  </span>
+                </label>
+                <label className="cookie-toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={draftAnalytics}
+                    onChange={(e) => setDraftAnalytics(e.target.checked)}
+                  />
+                  <span>
+                    <strong>{tEn("cookie.analyticsLabel")}</strong>
+                    {" — "}
+                    {tEn("cookie.analyticsDesc")}
+                  </span>
+                </label>
+                <label className="cookie-toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={draftMarketing}
+                    onChange={(e) => setDraftMarketing(e.target.checked)}
+                  />
+                  <span>
+                    <strong>{tEn("cookie.marketingLabel")}</strong>
+                    {" — "}
+                    {tEn("cookie.marketingDesc")}
+                  </span>
+                </label>
+              </div>
+            )}
+            <div className="cookie-banner-actions">
+              <button
+                type="button"
+                className="btn-secondary cookie-btn-equal"
+                onClick={() => {
+                  const next = saveCookieConsent(false, false);
+                  setCookieConsent(next);
+                  setCookiePanelOpen(false);
+                  setCookieDetailsOpen(false);
+                }}
+              >
+                {t("cookie.reject")}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary cookie-btn-equal"
+                onClick={() => {
+                  const next = saveCookieConsent(true, true);
+                  setCookieConsent(next);
+                  setCookiePanelOpen(false);
+                  setCookieDetailsOpen(false);
+                }}
+              >
+                {t("cookie.acceptAll")}
+              </button>
+              {cookieDetailsOpen && (
+                <button
+                  type="button"
+                  className="btn-primary cookie-save-prefs"
+                  onClick={() => {
+                    const next = saveCookieConsent(draftAnalytics, draftMarketing);
+                    setCookieConsent(next);
+                    setCookiePanelOpen(false);
+                    setCookieDetailsOpen(false);
+                  }}
+                >
+                  {t("cookie.savePrefs")}
+                </button>
+              )}
+              <button
+                type="button"
+                className="cookie-manage-toggle"
+                onClick={() => setCookieDetailsOpen((v) => !v)}
+              >
+                {cookieDetailsOpen ? t("cookie.hideOptions") : t("cookie.managePrefs")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {toastMessage && (
         <div className="toast" role="status" aria-live="polite">
           {toastMessage}
