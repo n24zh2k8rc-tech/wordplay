@@ -213,6 +213,8 @@ function buildDemoLeaderboardEntries(count, seedOffset, studentCodeForClassroom)
     entries.push({
       email,
       points,
+      firstName: profile.first,
+      lastName: profile.last,
       studentCode: studentCodeForClassroom || "",
       isDemo: true,
     });
@@ -318,6 +320,8 @@ export default function App() {
         points: acct.points || 0,
         awardedCompletions: acct.awardedCompletions || [],
         awardedAchievements: acct.awardedAchievements || [],
+        firstName: acct.firstName || "",
+        lastName: acct.lastName || "",
         studentCode: acct.studentCode || "",
       }));
     } catch {
@@ -354,6 +358,8 @@ export default function App() {
   const [statsScope, setStatsScope] = useState("all");
   const [eyebrowEverydayIdx, setEyebrowEverydayIdx] = useState(0);
   const [settingsStudentCode, setSettingsStudentCode] = useState("");
+  const [settingsFirstName, setSettingsFirstName] = useState("");
+  const [settingsLastName, setSettingsLastName] = useState("");
   const [schoolLeadEmail, setSchoolLeadEmail] = useState("");
   const [schoolLeadSchool, setSchoolLeadSchool] = useState("");
   const [activeSessions, setActiveSessions] = useState(() => {
@@ -400,7 +406,19 @@ export default function App() {
       if (!legacy?.email || !legacy?.password) return;
       setAccounts((prev) => {
         if (prev.some((item) => item.email === legacy.email)) return prev;
-        return [...prev, { email: legacy.email, password: legacy.password, points: 0, awardedCompletions: [], awardedAchievements: [], studentCode: "" }];
+        return [
+          ...prev,
+          {
+            email: legacy.email,
+            password: legacy.password,
+            points: 0,
+            awardedCompletions: [],
+            awardedAchievements: [],
+            studentCode: "",
+            firstName: "",
+            lastName: "",
+          },
+        ];
       });
       if (!currentUserEmail) setCurrentUserEmail(legacy.email);
       localStorage.removeItem(LEGACY_ACCOUNT_KEY);
@@ -570,6 +588,8 @@ export default function App() {
       awardedCompletions: [],
       awardedAchievements: [],
       studentCode: normalizedStudentCode,
+      firstName: "",
+      lastName: "",
     };
     setAccounts((prev) => [...prev, nextAccount]);
     setCurrentUserEmail(email);
@@ -615,14 +635,22 @@ export default function App() {
   const openSettings = () => {
     setProfileMenuOpen(false);
     setSettingsStudentCode(currentUser?.studentCode || "");
+    setSettingsFirstName(currentUser?.firstName || "");
+    setSettingsLastName(currentUser?.lastName || "");
     setSettingsOpen(true);
   };
 
   const saveSettings = () => {
     if (!currentUser) return;
     const normalizedStudentCode = settingsStudentCode.trim().toUpperCase();
+    const nextFirstName = settingsFirstName.trim();
+    const nextLastName = settingsLastName.trim();
     setAccounts((prev) =>
-      prev.map((acct) => (acct.email === currentUser.email ? { ...acct, studentCode: normalizedStudentCode } : acct)),
+      prev.map((acct) =>
+        acct.email === currentUser.email
+          ? { ...acct, studentCode: normalizedStudentCode, firstName: nextFirstName, lastName: nextLastName }
+          : acct,
+      ),
     );
     setToastMessage(normalizedStudentCode ? t("toasts.codeUpdated") : t("toasts.codeCleared"));
     setSettingsOpen(false);
@@ -1451,6 +1479,30 @@ export default function App() {
                   onChange={setLanguage}
                   labelledBy="settings-language-label"
                 />
+                <label className="auth-label settings-field-spaced" htmlFor="settings-first-name">
+                  {t("settings.firstNameLabel")}
+                </label>
+                <input
+                  id="settings-first-name"
+                  className="auth-input"
+                  type="text"
+                  value={settingsFirstName}
+                  onChange={(e) => setSettingsFirstName(e.target.value)}
+                  placeholder={t("settings.firstNamePlaceholder")}
+                  autoComplete="given-name"
+                />
+                <label className="auth-label" htmlFor="settings-last-name">
+                  {t("settings.lastNameLabel")}
+                </label>
+                <input
+                  id="settings-last-name"
+                  className="auth-input"
+                  type="text"
+                  value={settingsLastName}
+                  onChange={(e) => setSettingsLastName(e.target.value)}
+                  placeholder={t("settings.lastNamePlaceholder")}
+                  autoComplete="family-name"
+                />
                 <label className="auth-label settings-field-spaced" htmlFor="settings-student-code">
                   {t("settings.classroomLabel")}
                 </label>
@@ -1555,7 +1607,9 @@ export default function App() {
                     >
                       <span className="leaderboard-rank">#{idx + 1}</span>
                       <span className="leaderboard-name">
-                        {acct.email}
+                        {!acct.isDemo && (acct.firstName || "").trim() && (acct.lastName || "").trim()
+                          ? `${acct.firstName.trim()} ${acct.lastName.trim()}`
+                          : acct.email}
                         {acct.isDemo && <span className="demo-badge">{t("stats.sample")}</span>}
                       </span>
                       <span className="leaderboard-points">
